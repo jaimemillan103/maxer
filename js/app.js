@@ -1274,6 +1274,8 @@ function renderAll(){ensureUnifiedState();updateHeader();renderHabits();render()
 function render(){
   ensureUnifiedState();
   updateNavActive();
+  const hs=document.getElementById('habitsSection');
+  if(hs)hs.style.display=state.tab==='home'?'':'none';
   const c=document.getElementById('content');
   switch(state.tab){
     case 'home':c.innerHTML=rHome();break;

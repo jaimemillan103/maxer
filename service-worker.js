@@ -1,4 +1,4 @@
-const CACHE_NAME = 'maxer-v9';
+const CACHE_NAME = 'maxer-v10';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
