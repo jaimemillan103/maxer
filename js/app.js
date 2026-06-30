@@ -1507,6 +1507,8 @@ function rSettings(){
     <div class="settings-card"><div class="settings-card-title">✨ Asistente IA</div>
       <div class="settings-help" style="margin-bottom:8px">Pega la URL de tu Cloudflare Worker para activar el chat IA (botón ✨ flotante). Sin URL, el asistente no funciona.</div>
       <input class="settings-input" style="width:100%;max-width:none" value="${esc(localStorage.getItem('maxer_worker_url')||'')}" placeholder="https://tu-worker.workers.dev" oninput="localStorage.setItem('maxer_worker_url',this.value.trim())">
+      <div class="settings-help" style="margin:10px 0 8px">Token de acceso: el mismo <code>APP_TOKEN</code> configurado en el Worker. Protege tu clave de API para que nadie más pueda usar tu asistente.</div>
+      <input class="settings-input" type="password" autocomplete="off" style="width:100%;max-width:none" value="${esc(localStorage.getItem('maxer_worker_token')||'')}" placeholder="tu token secreto" oninput="localStorage.setItem('maxer_worker_token',this.value.trim())">
     </div>
     <div class="settings-card"><div class="settings-card-title">Cuenta</div>
       <div class="settings-actions"><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button></div>
@@ -1707,6 +1709,7 @@ async function sendAIMsg(){
   inp.value='';
   document.getElementById('aiSuggestions').style.display='none';
   const workerUrl=(localStorage.getItem('maxer_worker_url')||'').trim();
+  const workerToken=(localStorage.getItem('maxer_worker_token')||'').trim();
   if(!workerUrl){
     aiMessages.push({role:'user',content:text});
     aiMessages.push({role:'assistant',content:'⚠️ Para usar el asistente IA, ve a Ajustes y configura la URL de tu Cloudflare Worker.\n\nSi aún no tienes Worker, consulta las instrucciones incluidas en el zip.'});
@@ -1720,7 +1723,7 @@ async function sendAIMsg(){
   try{
     const res=await fetch(workerUrl,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json',...(workerToken?{'Authorization':'Bearer '+workerToken}:{})},
       body:JSON.stringify({context:buildAIContext(),messages:aiMessages.filter(m=>m.role!=='system')})
     });
     const data=await res.json();
