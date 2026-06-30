@@ -1,1 +1,2 @@
-/* /index.html 200
+# MAXER es una PWA de una sola página servida en /.
+# Sin reglas catch-all para que /css/* y /js/* se sirvan como archivos reales.
