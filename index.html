@@ -65,7 +65,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 /* ─── HEADER ─── */
 .header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top)+14px) 18px 12px;position:sticky;top:0;z-index:30;box-shadow:var(--sh)}
 .header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.app-name{font-size:19px;font-weight:800;color:var(--text);letter-spacing:-0.3px}
+.app-name{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-0.3px}
 .header-badges{display:flex;gap:6px;align-items:center}
 .xp-badge{background:var(--text);color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px}
 .streak-badge{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px}
@@ -97,8 +97,9 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .habit-chip.done .water-count{color:var(--green2)}
 
 /* ─── SETTINGS BTN ─── */
-.settings-btn{background:none;border:none;font-size:22px;cursor:pointer;padding:4px 6px;border-radius:10px;transition:background 0.18s;line-height:1}
+.settings-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:10px;transition:background 0.18s;line-height:1;color:var(--blue);display:flex;align-items:center}
 .settings-btn:active{background:var(--bg);transform:scale(0.92)}
+.settings-btn.active{background:var(--blue);color:#fff}
 
 /* ─── CONTENT ─── */
 .content{padding:14px 16px 0}
@@ -291,13 +292,13 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 /* ─── BOTTOM NAV ─── */
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px max(16px,env(safe-area-inset-left)) calc(env(safe-area-inset-bottom)+8px) max(16px,env(safe-area-inset-right));gap:4px;z-index:30;box-shadow:0 -1px 0 var(--border)}
 .nav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;padding:6px 4px;border-radius:10px;border:none;background:transparent;cursor:pointer;font-family:'Sora',sans-serif;transition:all 0.18s}
-.nav-btn .nav-icon{font-size:19px;line-height:1;transition:transform 0.18s}
-.nav-btn .nav-label{font-size:9px;font-weight:600;color:var(--muted);letter-spacing:0.3px;text-transform:uppercase}
-.nav-btn.active{background:var(--text)}
+.nav-btn .nav-icon{display:flex;align-items:center;justify-content:center;color:var(--blue);transition:all 0.18s}
+.nav-btn .nav-label{font-size:9px;font-weight:600;color:var(--muted);letter-spacing:0.3px;text-transform:uppercase;transition:color 0.18s}
+.nav-btn.active{background:var(--blue)}
 .nav-btn.active .nav-label{color:#ffffff}
-.nav-btn.active .nav-icon{transform:scale(1.05);filter:brightness(10)}
-.nav-btn:active{background:var(--surface2)}
-.settings-btn.active,.settings-btn:focus-visible{background:var(--bg);outline:none}
+.nav-btn.active .nav-icon{color:#ffffff;transform:scale(1.08)}
+.nav-btn:active:not(.active){background:var(--surface2)}
+.settings-btn:focus-visible{outline:none}
 
 /* ─── DAILY SUMMARY ─── */
 .daily-summary{background:var(--text);border-radius:var(--r);padding:16px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden}
@@ -752,6 +753,18 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 
 <div id="printView" class="print-view"></div>
 
+<div class="sheet-overlay" id="habitsEditorOverlay">
+  <div class="sheet-panel" style="max-height:90vh;overflow-y:auto">
+    <div class="sheet-handle"></div>
+    <div class="sec-head">
+      <div class="sec-title">Hábitos y Mínimos</div>
+      <div class="sec-sub">Activa o desactiva lo que quieres ver cada día.</div>
+    </div>
+    <div id="habitsEditorContent"></div>
+    <button class="modal-btn primary" style="width:100%;margin:8px 0 4px" onclick="closeSheet('habitsEditorOverlay');renderHabits();render()">Listo</button>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header" id="mainHeader">
   <div class="header-row">
@@ -760,7 +773,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
       <div class="streak-badge"><span id="hStreak">0</span> días</div>
       <div class="xp-badge"><span id="hXP">0</span> XP</div>
             <div class="sync-indicator hidden" id="syncIndicator" aria-live="polite" role="status"></div>
-      <button class="settings-btn" onclick="switchTab('settings')" id="settingsBtn" title="Ajustes">⚙️</button>
+      <button class="settings-btn" onclick="switchTab('settings')" id="settingsBtn" title="Ajustes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
     </div>
   </div>
   <div class="level-row">
@@ -782,16 +795,20 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 
 <nav class="bottom-nav" id="bottomNav">
   <button class="nav-btn active" id="navHome" onclick="switchTab('home')" aria-current="page">
-    <span class="nav-icon">🏠</span><span class="nav-label">Hoy</span>
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></span>
+    <span class="nav-label">Hoy</span>
   </button>
   <button class="nav-btn" id="navRehab" onclick="switchTab('rehab')">
-    <span class="nav-icon">🦵</span><span class="nav-label">Rehab</span>
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg></span>
+    <span class="nav-label">Rehab</span>
   </button>
   <button class="nav-btn" id="navTraining" onclick="switchTab('training')">
-    <span class="nav-icon">💪</span><span class="nav-label">Entrenos</span>
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="12" x2="15" y2="12"/><line x1="5" y1="8" x2="5" y2="16"/><line x1="19" y1="8" x2="19" y2="16"/><line x1="3" y1="10" x2="3" y2="14"/><line x1="21" y1="10" x2="21" y2="14"/></svg></span>
+    <span class="nav-label">Entrenos</span>
   </button>
   <button class="nav-btn" id="navProgress" onclick="switchTab('progress')">
-    <span class="nav-icon">📊</span><span class="nav-label">Progreso</span>
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+    <span class="nav-label">Progreso</span>
   </button>
 </nav>
 
@@ -972,6 +989,7 @@ const DS=()=>({
   history:{},
   profile:{name:'',rehabDaysGoal:4,reminderTime:'19:00',reminderEnabled:false,onboardingDone:false},
   training:{weights:{},prs:{}},
+  habitSettings:{},
   recomp:{
     entries:{},
     measures:{},
@@ -1286,18 +1304,20 @@ function doFullReset(){
 // ══ TABS ══════════════════════════════════════════════════
 function switchTab(t){
   state.tab=t;
-  ['home','rehab','push','general'].forEach(id=>{
+  ['home','rehab','training','progress'].forEach(id=>{
     const nav=document.getElementById('nav'+id.charAt(0).toUpperCase()+id.slice(1));
     if(nav) nav.className='nav-btn'+(t===id?' active':'');
   });
   const settingsBtn=document.getElementById('settingsBtn');
-  if(settingsBtn) settingsBtn.className='settings-btn'+(t==='settings'||t==='stats'?' active':'');
+  if(settingsBtn) settingsBtn.className='settings-btn'+(t==='settings'?' active':'');
   render();
 }
 
 // ══ HABITS ═══════════════════════════════════════════════
 function renderHabits(){
-  document.getElementById('habitsRow').innerHTML=HABITS.map(h=>{
+  ensureUnifiedState();
+  const visible=HABITS.filter(h=>state.habitSettings[h.id]!==false);
+  document.getElementById('habitsRow').innerHTML=visible.map(h=>{
     if(h.type==='counter'){const v=state.habits[h.id]||0,done=v>=h.max;
       return `<div class="habit-chip${done?' done':''}" role="checkbox" tabindex="0" aria-checked="${done?'true':'false'}" aria-label="${esc(h.label)} ${v} de ${h.max}" onclick="toggleHabit('${h.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleHabit('${h.id}')}"><span class="habit-emoji">${h.emoji}</span><span class="water-count">${v}/${h.max}</span><span class="habit-label">${h.label}</span></div>`}
     const done=!!state.habits[h.id];
@@ -1772,6 +1792,7 @@ function ensureUnifiedState(){
   if(!state.recomp.entries||typeof state.recomp.entries!=='object') state.recomp.entries={};
   if(!state.recomp.measures||typeof state.recomp.measures!=='object') state.recomp.measures={};
   if(!state.recomp.goal||typeof state.recomp.goal!=='object') state.recomp.goal={targetWeight:85,targetBF:11,startWeight:92,startBF:16,startDate:null};
+  if(!state.habitSettings||typeof state.habitSettings!=='object') state.habitSettings={};
   return state;
 }
 
@@ -2333,28 +2354,50 @@ function getStateSizeWarningHtml(){
   return `<div class="settings-card"><div class="settings-card-title">Aviso de datos</div><div class="settings-help">Tus datos están creciendo mucho. Pronto convendrá optimizar el diario en una fase posterior.</div></div>`;
 }
 function rSettings(){
-  ensureUnifiedState();const p=state.profile||{},pinOn=!!(localStorage.getItem(MAXER_PIN_KEY)||localStorage.getItem(DIARIO_PIN_KEY)||localStorage.getItem(DIARIO_OLD_PIN_KEY));
-  return `<div class="sec-head"><div class="sec-title">Ajustes</div><div class="sec-sub">Perfil, PIN, recordatorios y mantenimiento.</div></div>
+  ensureUnifiedState();const p=state.profile||{};
+  return `<div class="sec-head"><div class="sec-title">Ajustes</div><div class="sec-sub">Configuración personal de la app.</div></div>
   <div class="settings-grid">
-    <div class="settings-card"><div class="settings-card-title">Perfil</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Nombre</div><div class="settings-help">Se usa en saludos y recordatorios.</div></div><div class="settings-control"><input class="settings-input" value="${esc(p.name||'')}" maxlength="20" placeholder="Tu nombre" oninput="updProfileName(this.value)"></div></div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Rehab</div><div class="settings-help">${p.rehabEnabled===false?'Oculta la rutina sin borrar datos.':'Rutina visible y activa.'}</div></div><button class="settings-toggle ${p.rehabEnabled===false?'':'on'}" aria-pressed="${p.rehabEnabled===false?'false':'true'}" onclick="toggleRehabEnabled()"></button></div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Meta rehab</div><div class="settings-help">Objetivo semanal visible.</div></div><div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} días/sem</option>`).join('')}</select></div></div>
+    <div class="settings-card"><div class="settings-card-title">Rehab</div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Activa</div><div class="settings-help">${p.rehabEnabled===false?'Oculta sin borrar datos.':'Rutina visible y activa.'}</div></div><button class="settings-toggle ${p.rehabEnabled===false?'':'on'}" aria-pressed="${p.rehabEnabled===false?'false':'true'}" onclick="toggleRehabEnabled()"></button></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Meta semanal</div><div class="settings-help">Días de rehab por semana.</div></div><div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} días</option>`).join('')}</select></div></div>
     </div>
-    <div class="settings-card"><div class="settings-card-title">Seguridad</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">PIN local</div><div class="settings-help">${pinOn?'Activo en este dispositivo':'Opcional. No se sincroniza con Firebase.'}</div></div><button class="settings-toggle ${pinOn?'on':''}" onclick="togglePinSetting()"></button></div>
+    <div class="settings-card"><div class="settings-card-title">Personalizar</div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva cada hábito y mínimo diario.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>
     </div>
     <div class="settings-card"><div class="settings-card-title">Recordatorios</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">MAXER</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo':'Pide permiso al navegador.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora MAXER</div><div class="settings-help">Se programa mientras la app esté abierta.</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Diario</div><div class="settings-help">${state.journal.notifications?.enabled?'Activo a las '+state.journal.notifications.time:'Una frase al día.'}</div></div><button class="settings-toggle ${state.journal.notifications?.enabled?'on':''}" onclick="toggleJournalNotif()"></button></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Notificación diaria</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo.':'Pide permiso al navegador.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
     </div>
     ${getStateSizeWarningHtml()}
-    <div class="settings-card"><div class="settings-card-title">Privacidad</div><div class="settings-help">El PIN es local de este dispositivo y no se guarda en Firebase. En modo invitado tus datos quedan en localStorage. Con sesión iniciada, MAXER sincroniza tus datos de progreso y diario en tus documentos de Firestore.</div></div>
-    <div class="settings-card"><div class="settings-card-title">Datos</div><div class="settings-actions"><button class="settings-action primary" onclick="openProfileOnboarding()">Editar onboarding</button><button class="settings-action" onclick="openSheet('journalDataOverlay')">Diario JSON/print</button><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button><button class="settings-action" onclick="switchTab('progress')">Ver progreso</button></div></div>
+    <div class="settings-card"><div class="settings-card-title">Cuenta</div>
+      <div class="settings-actions"><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button></div>
+    </div>
   </div>
-  <div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">Zona de peligro</div><div class="danger-btns"><button class="danger-btn" onclick="promptDayReset()">Reset día de hoy</button><button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button><button class="danger-btn" onclick="openDeleteAccountModal()">Eliminar cuenta y datos</button></div></div>`;
+  <div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">Zona de peligro</div><div class="danger-btns"><button class="danger-btn" onclick="promptDayReset()">Reset día de hoy</button><button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button><button class="danger-btn" onclick="openDeleteAccountModal()">Eliminar cuenta</button></div></div>`;
 }
+function openHabitsEditor(){
+  ensureUnifiedState();
+  const habHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Hábitos diarios</div>${
+    HABITS.map(h=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${h.emoji} ${h.label}</div></div><button class="settings-toggle ${state.habitSettings[h.id]===false?'':'on'}" onclick="toggleHabitSetting('${h.id}')"></button></div>`).join('')
+  }</div>`;
+  const minHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Mínimos diarios</div>${
+    DEFAULT_MINIMUMS.map(m=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${m.emoji} ${m.name}</div><div class="settings-help">${m.desc}</div></div><button class="settings-toggle ${state.minimumSettings[m.id]?.active!==false?'on':''}" onclick="toggleMinimumSetting('${m.id}')"></button></div>`).join('')
+  }</div>`;
+  document.getElementById('habitsEditorContent').innerHTML=habHtml+minHtml;
+  openSheet('habitsEditorOverlay');
+}
+function toggleHabitSetting(id){
+  ensureUnifiedState();
+  state.habitSettings[id]=state.habitSettings[id]===false?true:false;
+  saveState();openHabitsEditor();
+}
+function toggleMinimumSetting(id){
+  ensureUnifiedState();
+  if(!state.minimumSettings[id]) state.minimumSettings[id]={active:true};
+  state.minimumSettings[id].active=!state.minimumSettings[id].active;
+  saveState();openHabitsEditor();
+}
+
 let obGoal='todo',obReminderDraft=false,obPinDraft='',obMinDraft=null,obRehabDraft=true;
 function showOnboarding(start=0){
   ensureUnifiedState();
