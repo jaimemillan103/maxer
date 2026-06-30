@@ -523,7 +523,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
     </button>
     <div class="login-divider">o</div>
     <button class="login-btn secondary" onclick="doRegister()">Crear cuenta nueva</button>
-    <span class="login-guest" onclick="doGuest()">Continuar sin cuenta (solo local)</span>
+    <span class="login-guest" onclick="doGuest()">Continuar sin cuenta</span>
   </div>
 </div>
 
@@ -716,15 +716,14 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 <div class="content" id="content"></div>
 
 <script>
-// ══ FIREBASE CONFIG — reemplaza con tu proyecto Firebase ══
+// ══ FIREBASE CONFIG — proyecto unificado (focus-to-do-millan) ══
 const FB_CFG = {
-  apiKey:            "AIzaSyDNelovR--ZFlUVGeAULm766qtE9Z8LVyo",
-  authDomain:        "maxer-36373.firebaseapp.com",
-  projectId:         "maxer-36373",
-  storageBucket:     "maxer-36373.firebasestorage.app",
-  messagingSenderId: "214322436845",
-  appId:             "1:214322436845:web:42bed2af83ef2de9ab0ae4",
-  measurementId:     "G-FCMLEB9YEN"
+  apiKey:            "AIzaSyBkWZz3GTviJAwhwWLOhy-wIhs79OuTbrU",
+  authDomain:        "focus-to-do-millan.firebaseapp.com",
+  projectId:         "focus-to-do-millan",
+  storageBucket:     "focus-to-do-millan.firebasestorage.app",
+  messagingSenderId: "475179604545",
+  appId:             "1:475179604545:web:6d19b253491364c9fc44c0",
 };
 let auth, db, currentUser = null, saveTimer = null;
 let _fbOk = false;
@@ -732,6 +731,8 @@ try {
   firebase.initializeApp(FB_CFG);
   auth = firebase.auth();
   db   = firebase.firestore();
+  // Persistencia offline (multi-pestaña). Falla silenciosa si el navegador no lo soporta.
+  db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
   _fbOk = true;
 } catch(e) {
   const _noop = ()=>({get:()=>Promise.resolve({exists:false}),set:()=>Promise.resolve(),doc:()=>_noop(),collection:()=>_noop()});
@@ -908,11 +909,28 @@ function tPush(s){return Object.values(((s||state).pushups)||{}).flat().reduce((
 // ══ GOOGLE LOGIN ══════════════════════════════════════════════
 async function doGoogleLogin(){
   liErr('');
+  const provider=new firebase.auth.GoogleAuthProvider();
   try{
-    const provider=new firebase.auth.GoogleAuthProvider();
     appLoaded=false;
-    await auth.signInWithPopup(provider);
-  }catch(ex){liErr(ex.code==='auth/popup-closed-by-user'?'Ventana cerrada':'Error Google: '+ex.message)}
+    const cur=auth.currentUser;
+    if(cur&&cur.isAnonymous){
+      // Invitado → enlaza la cuenta Google conservando los datos del invitado
+      try{
+        await cur.linkWithPopup(provider);
+      }catch(ex){
+        if(ex.code==='auth/credential-already-in-use'||ex.code==='auth/email-already-in-use'){
+          // Esa cuenta Google ya existe → inicia sesión normal en ella
+          await auth.signInWithPopup(provider);
+        } else throw ex;
+      }
+    } else {
+      await auth.signInWithPopup(provider);
+    }
+    // onAuthStateChanged se encarga de cargar datos y mostrar la app
+  }catch(ex){
+    appLoaded=true;
+    liErr(ex.code==='auth/popup-closed-by-user'?'Ventana cerrada':ex.code==='auth/unauthorized-domain'?'Dominio no autorizado en Firebase':'Error Google: '+ex.message);
+  }
 }
 
 // ══ AUTH ══════════════════════════════════════════════════
@@ -922,22 +940,21 @@ auth.onAuthStateChanged(async u=>{
   currentUser = u;
 
   if(appLoaded){
-    // Token refresh o re-auth posterior — NO recargar datos, solo actualizar usuario
-    if(u) document.getElementById('userBtn').textContent = '👤 '+u.email.split('@')[0];
+    // Token refresh o re-auth posterior — NO recargar datos
     return;
   }
   appLoaded = true;
 
   if(u){
-    document.getElementById('userBtn').textContent = '👤 '+u.email.split('@')[0];
+    // Usuario con sesión (Google, email o anónimo) → carga de la nube
     await loadFS();
   } else {
     loadLocal();
   }
 
   document.getElementById('loadingScreen').classList.add('hidden');
-  const hasCfg = FB_CFG.apiKey !== 'YOUR_API_KEY';
-  if(!u && hasCfg){
+  if(!u){
+    // Sin sesión → pantalla de acceso
     document.getElementById('loginScreen').classList.remove('hidden');
   } else {
     showApp();
@@ -979,9 +996,18 @@ async function doRegister(){
   }
   catch(ex){liErr(ex.code==='auth/email-already-in-use'?'Email ya registrado':'Error: '+ex.message)}
 }
-function doGuest(){
-  document.getElementById('loginScreen').classList.add('hidden');
-  showApp();
+async function doGuest(){
+  liErr('');
+  try{
+    appLoaded=false;
+    await auth.signInAnonymously();
+    // onAuthStateChanged carga datos (de la nube anónima) y muestra la app
+  }catch(ex){
+    // Proveedor anónimo deshabilitado o sin red → modo local puro
+    appLoaded=true;currentUser=null;
+    document.getElementById('loginScreen').classList.add('hidden');
+    loadLocal();showApp();
+  }
 }
 function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
