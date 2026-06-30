@@ -186,8 +186,8 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 @keyframes popIn{0%{transform:scale(0.92);opacity:0}100%{transform:scale(1);opacity:1}}
 
 /* ─── XP POP ─── */
-.xp-pop{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--text);color:#fff;border-radius:10px;padding:10px 20px;font-weight:700;font-size:15px;z-index:200;pointer-events:none;animation:xpFloat 1.5s ease forwards}
-@keyframes xpFloat{0%{opacity:0;transform:translate(-50%,-60%)}20%{opacity:1;transform:translate(-50%,-50%)}80%{opacity:1;transform:translate(-50%,-50%)}100%{opacity:0;transform:translate(-50%,-80%)}}
+.xp-pop{position:fixed;top:38%;left:50%;background:var(--blue);color:#fff;border-radius:12px;padding:12px 24px;font-weight:700;font-size:15px;z-index:200;pointer-events:none;white-space:nowrap;box-shadow:0 8px 28px rgba(26,32,53,0.35);animation:xpFloat 1.6s cubic-bezier(0.22,1,0.36,1) forwards}
+@keyframes xpFloat{0%{opacity:0;transform:translate(-50%,8px) scale(0.85)}15%{opacity:1;transform:translate(-50%,0) scale(1)}78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-28px) scale(0.96)}}
 
 /* ─── ACHIEVEMENTS ─── */
 .achieve-wrap{position:relative;margin-bottom:4px}
@@ -241,11 +241,13 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .rest-skip-btn:active{color:var(--red)}
 
 /* ─── MODAL ─── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:80;display:flex;align-items:flex-end;backdrop-filter:blur(4px)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease}
 .modal-overlay.hidden{display:none}
-.modal{background:var(--surface);border-radius:16px 16px 0 0;padding:24px 20px calc(env(safe-area-inset-bottom)+24px);width:100%;animation:slideUp 0.25s ease}
-.modal h3{font-size:18px;font-weight:800;margin-bottom:5px}
-.modal p{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:18px}
+.modal{background:var(--surface);border-radius:18px;padding:26px 24px;width:100%;max-width:400px;box-shadow:0 12px 40px rgba(0,0,0,0.22);animation:modalPop 0.32s cubic-bezier(0.34,1.3,0.5,1)}
+.modal h3{font-size:18px;font-weight:800;margin-bottom:7px;line-height:1.3}
+.modal p{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:20px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes modalPop{0%{opacity:0;transform:scale(0.9) translateY(12px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 .modal-btns{display:flex;gap:8px}
 .modal-btn{flex:1;padding:12px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;transition:all 0.2s}
 .modal-btn.primary{background:var(--text);color:#fff}
@@ -306,41 +308,6 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .ds-title{font-size:11px;font-weight:700;opacity:0.7;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
 .ds-value{font-size:32px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
 .ds-sub{font-size:12px;opacity:0.7}
-
-/* ─── ONBOARDING ─── */
-#onboardingScreen{position:fixed;inset:0;z-index:210;background:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top)+24px) 24px calc(env(safe-area-inset-bottom)+24px);overflow-y:auto}
-#onboardingScreen.hidden{display:none}
-.ob-slides{width:100%;max-width:380px;position:relative;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:22px 18px 18px;box-shadow:0 24px 80px rgba(0,0,0,.28);backdrop-filter:blur(18px)}
-.ob-slide{display:none;flex-direction:column;align-items:center;text-align:center;animation:obIn .35s ease}
-.ob-slide.active{display:flex}
-@keyframes obIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.ob-logo{margin-bottom:20px;display:flex;align-items:center;justify-content:center}
-.ob-appname{font-size:36px;font-weight:800;color:#fff;margin-bottom:6px}
-.ob-tagline{color:rgba(255,255,255,.45);font-size:13px;line-height:1.6;margin-bottom:28px}
-.ob-features{width:100%;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
-.ob-feat{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;text-align:left}
-.ob-feat-icon{font-size:24px;flex-shrink:0}
-.ob-feat-title{color:rgba(255,255,255,.9);font-size:13px;font-weight:700;margin-bottom:2px}
-.ob-feat-desc{color:rgba(255,255,255,.38);font-size:11px}
-.ob-btn{width:100%;padding:14px;border-radius:14px;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;letter-spacing:.3px;transition:all .2s}
-.ob-btn.primary{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.2)}
-.ob-btn.primary:active{transform:scale(.97)}
-.ob-btn.ghost{background:transparent;color:rgba(255,255,255,.35);font-size:12px;padding:10px;margin-top:4px}
-.ob-step-title{color:#fff;font-size:22px;font-weight:800;margin-bottom:6px;line-height:1.2}
-.ob-step-sub{color:rgba(255,255,255,.4);font-size:13px;margin-bottom:24px;line-height:1.5}
-.ob-input{width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:16px;font-weight:600;font-family:'Sora',sans-serif;padding:14px 16px;outline:none;transition:border-color .2s;margin-bottom:16px;text-align:center}
-.ob-input::placeholder{color:rgba(255,255,255,.25);font-weight:400}
-.ob-input:focus{border-color:rgba(239,68,68,.7)}
-.ob-label{color:rgba(255,255,255,.6);font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px;text-align:left;width:100%}
-.ob-days-row{display:flex;gap:8px;width:100%;margin-bottom:20px}
-.ob-day-btn{flex:1;padding:12px 8px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s;text-align:center}
-.ob-day-btn.sel{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35);color:#fff}
-.ob-time-wrap{width:100%;margin-bottom:20px;position:relative}
-.ob-time-input{width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;padding:14px 16px;outline:none;text-align:center;cursor:pointer}
-.ob-notif-status{font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;text-align:center;min-height:16px}
-.ob-dots{display:flex;gap:7px;justify-content:center;margin-bottom:28px}
-.ob-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);transition:all .3s}
-.ob-dot.active{background:rgba(255,255,255,.8);width:20px;border-radius:4px}
 
 .settings-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
 .settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px;box-shadow:var(--sh)}
@@ -459,13 +426,6 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .rescue-grid{display:grid;grid-template-columns:1fr;gap:8px}
 .rescue-btn{border:1.5px solid var(--border);background:var(--bg);border-radius:13px;padding:12px;text-align:left;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;font-family:'Sora',sans-serif}
 
-.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-bottom:16px}
-.choice-btn{border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:rgba(255,255,255,.68);border-radius:13px;padding:12px 9px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;text-align:left}
-.choice-btn.sel{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4);color:#fff}
-.min-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-bottom:16px}
-.min-toggle{border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.72);border-radius:13px;padding:10px;text-align:left;font-size:11px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif}
-.min-toggle.on{background:rgba(34,197,94,.18);border-color:rgba(134,239,172,.65);color:#fff}
-.ob-progress-text{font-size:11px;color:rgba(255,255,255,.38);font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
 .print-view{display:none}
 @media(max-width:420px){.nav-btn .nav-label{font-size:8px}.pin-pad{grid-template-columns:repeat(3,72px)}.pin-key{width:72px;height:72px}.year-grid{grid-template-columns:repeat(2,1fr)}}
 
@@ -568,65 +528,6 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 </div>
 
 <!-- ONBOARDING -->
-<div id="onboardingScreen" class="hidden">
-  <div class="ob-slides">
-    <div class="ob-dots">
-      <div class="ob-dot active" id="obDot0"></div>
-      <div class="ob-dot" id="obDot1"></div>
-      <div class="ob-dot" id="obDot2"></div>
-    </div>
-    <!-- Slide 0: Bienvenida -->
-    <div class="ob-slide active" id="obSlide0">
-      <div class="ob-logo">
-        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="72" height="72" rx="18" fill="#1a2035"/>
-          <polyline points="16,54 16,18 36,38 56,18 56,54" fill="none" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="ob-appname">MAXER</div>
-      <div class="ob-tagline">Tu app de recuperación,<br>entrenamiento y hábitos diarios</div>
-      <div class="ob-features">
-        <div class="ob-feat"><span class="ob-feat-icon">🦵</span><div><div class="ob-feat-title">Rehab estructurada</div><div class="ob-feat-desc">Plan de 90 días · 3–4 días por semana</div></div></div>
-        <div class="ob-feat"><span class="ob-feat-icon">💪</span><div><div class="ob-feat-title">Flexiones y ejercicio general</div><div class="ob-feat-desc">8 tipos · boxeo · core · cardio</div></div></div>
-        <div class="ob-feat"><span class="ob-feat-icon">⚡</span><div><div class="ob-feat-title">Gamificación real</div><div class="ob-feat-desc">XP · niveles · logros · racha diaria</div></div></div>
-      </div>
-      <button class="ob-btn primary" onclick="obNext()">Empezar →</button>
-    </div>
-    <!-- Slide 1: Perfil -->
-    <div class="ob-slide" id="obSlide1">
-      <div class="ob-step-title">¿Cómo te llamas?</div>
-      <div class="ob-step-sub">Personalizamos tus mensajes de progreso y motivación</div>
-      <input class="ob-input" type="text" id="obName" placeholder="Tu nombre" maxlength="20" autocomplete="given-name">
-      <div class="ob-label">Meta de rehab semanal</div>
-      <div class="ob-days-row">
-        <button class="ob-day-btn" id="obDay3" onclick="obSelDay(3)">3 días<br><span style="font-size:10px;opacity:.6">mínimo</span></button>
-        <button class="ob-day-btn sel" id="obDay4" onclick="obSelDay(4)">4 días<br><span style="font-size:10px;opacity:.6">recomendado</span></button>
-        <button class="ob-day-btn" id="obDay5" onclick="obSelDay(5)">5 días<br><span style="font-size:10px;opacity:.6">intensivo</span></button>
-      </div>
-      <button class="ob-btn primary" onclick="obNext()">Continuar →</button>
-    </div>
-    <!-- Slide 2: Recordatorio -->
-    <div class="ob-slide" id="obSlide2">
-      <div class="ob-logo" style="margin-bottom:10px">
-        <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="52" height="52" rx="13" fill="#1a2035"/>
-          <path d="M26 14c-5.523 0-10 4.477-10 10v7l-2 3h24l-2-3v-7c0-5.523-4.477-10-10-10z" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M23 34v1a3 3 0 006 0v-1" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div class="ob-step-title">Recordatorio diario</div>
-      <div class="ob-step-sub">Te avisamos a la hora que elijas para mantener tu racha activa</div>
-      <div class="ob-label">Hora preferida</div>
-      <div class="ob-time-wrap">
-        <input class="ob-time-input" type="time" id="obTime" value="19:00">
-        <div class="ob-notif-status" id="obNotifStatus"></div>
-      </div>
-      <button class="ob-btn primary" onclick="obFinish(true)">Activar recordatorio 🔔</button>
-      <button class="ob-btn ghost" onclick="obFinish(false)">Saltar por ahora</button>
-    </div>
-  </div>
-</div>
-
 <!-- RECOMP ENTRY MODAL -->
 <div class="modal-overlay hidden" id="recompModal" role="dialog" aria-modal="true">
   <div class="modal">
@@ -1014,46 +915,6 @@ async function doGoogleLogin(){
   }catch(ex){liErr(ex.code==='auth/popup-closed-by-user'?'Ventana cerrada':'Error Google: '+ex.message)}
 }
 
-// ══ INLINE ONBOARDING ═════════════════════════════════════════
-let _obName='',_obDays=4;
-function rInlineOnboarding(){
-  return `
-<div style="display:flex;flex-direction:column;align-items:center;padding:24px 0 10px">
-  <div style="font-size:52px;margin-bottom:8px">🚀</div>
-  <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">Bienvenido a MAXER</div>
-  <div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:24px">Tu app de entrenamiento, rehab y hábitos.<br>Cuéntanos un poco sobre ti.</div>
-</div>
-<div style="background:var(--surface);border-radius:var(--r);padding:18px;margin-bottom:12px;border:1px solid var(--border)">
-  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Tu nombre</div>
-  <input id="obNameInline" type="text" placeholder="¿Cómo te llamas?" value="${state.profile?.name||''}"
-    style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:600;font-family:'Sora',sans-serif;padding:12px 14px;outline:none;margin-bottom:16px"
-    oninput="_obName=this.value">
-  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Días de rehab por semana</div>
-  <div style="display:flex;gap:8px;margin-bottom:16px">
-    ${[3,4,5].map(d=>`<button onclick="_obDays=${d};document.querySelectorAll('.ob-day-sel').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')" 
-      class="ob-day-sel${(_obDays||4)===d?' sel':''}" 
-      style="flex:1;padding:11px 8px;border-radius:10px;border:1.5px solid ${(_obDays||4)===d?'rgba(255,255,255,.4)':'rgba(255,255,255,.12)'};background:${(_obDays||4)===d?'rgba(255,255,255,.18)':'rgba(255,255,255,.05)'};color:${(_obDays||4)===d?'#fff':'rgba(255,255,255,.5)'};font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s">${d} días</button>`).join('')}
-  </div>
-  <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Recordatorio diario</div>
-  <input type="time" id="obTimeInline" value="19:00"
-    style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;padding:12px 14px;outline:none;text-align:center">
-</div>
-<button onclick="saveInlineOnboarding()" 
-  style="width:100%;padding:15px;border-radius:14px;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;border:1px solid rgba(255,255,255,0.2);letter-spacing:.3px;margin-bottom:6px;transition:all .2s">
-  Empezar MAXER 🚀
-</button>`;
-}
-function saveInlineOnboarding(){
-  const n=document.getElementById('obNameInline')?.value?.trim()||'';
-  const t=document.getElementById('obTimeInline')?.value||'19:00';
-  if(!state.profile) state.profile={};
-  state.profile.name=n;
-  state.profile.rehabDaysGoal=_obDays||4;
-  state.profile.reminderTime=t;
-  state.profile.onboardingDone=true;
-  saveState();renderAll();
-}
-
 // ══ AUTH ══════════════════════════════════════════════════
 let appLoaded = false; // flag: solo carga datos la PRIMERA vez
 
@@ -1125,7 +986,6 @@ function doGuest(){
 function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   const _ma=document.getElementById('mainApp');if(_ma)_ma.style.display='block';
-  if(!state.profile?.onboardingDone) setTimeout(showOnboarding,60);
   checkDailyReminder();
   renderAll();
 }
@@ -1473,61 +1333,7 @@ if(document.getElementById('liPass')){
   document.getElementById('liPass').addEventListener('keydown',e=>{if(e.key==='Enter') doLogin()});
 }
 
-// ══ ONBOARDING ════════════════════════════════════════════
-let obStep=0, obDaysGoal=4;
-
-function showOnboarding(){
-  obStep=0;obDaysGoal=state.profile?.rehabDaysGoal||4;
-  obSelDay(obDaysGoal);
-  document.getElementById('onboardingScreen').classList.remove('hidden');
-  obUpdDots();
-}
-function obNext(){
-  if(obStep===0){obStep=1}
-  else if(obStep===1){
-    const n=document.getElementById('obName').value.trim();
-    if(!state.profile) state.profile={};
-    state.profile.name=n;
-    state.profile.rehabDaysGoal=obDaysGoal;
-    obStep=2;
-  }
-  obUpdSlide();obUpdDots();
-}
-function obSelDay(n){
-  obDaysGoal=n;
-  [3,4,5].forEach(d=>{document.getElementById('obDay'+d).className='ob-day-btn'+(d===n?' sel':'')});
-}
-function obUpdSlide(){
-  [0,1,2].forEach(i=>{
-    document.getElementById('obSlide'+i).className='ob-slide'+(i===obStep?' active':'');
-  });
-}
-function obUpdDots(){
-  [0,1,2].forEach(i=>{
-    document.getElementById('obDot'+i).className='ob-dot'+(i===obStep?' active':'');
-  });
-}
-async function obFinish(enableNotif){
-  const t=document.getElementById('obTime').value||'19:00';
-  if(!state.profile) state.profile={};
-  state.profile.reminderTime=t;
-  state.profile.onboardingDone=true;
-  if(enableNotif){
-    const perm=await Notification.requestPermission().catch(()=>'denied');
-    state.profile.reminderEnabled=(perm==='granted');
-    document.getElementById('obNotifStatus').textContent=perm==='granted'?'✅ Recordatorio activado':'Sin permiso de notificaciones';
-    if(perm!=='granted'){setTimeout(()=>launchApp(),1200);return;}
-  }
-  launchApp();
-}
-function launchApp(){
-  document.getElementById('onboardingScreen').classList.add('hidden');
-  saveState();
-  checkDailyReminder();
-  renderAll();
-}
-
-// ══ DAILY REMINDER ════════════════════════════════════════
+// ══ DAILY REMINDER (legacy, sobrescrito más abajo) ═════════
 function checkDailyReminder(){
   if(!state.profile?.reminderEnabled||!state.profile?.reminderTime) return;
   if('Notification' in window && Notification.permission==='granted'){
@@ -1570,15 +1376,6 @@ async function toggleReminder(){
   saveState();
   checkDailyReminder();
   render();
-}
-function openProfileOnboarding(){
-  obStep=1;
-  document.getElementById('obName').value=state.profile?.name||'';
-  document.getElementById('obTime').value=state.profile?.reminderTime||'19:00';
-  obSelDay(state.profile?.rehabDaysGoal||4);
-  obUpdSlide();
-  obUpdDots();
-  document.getElementById('onboardingScreen').classList.remove('hidden');
 }
 function rStats(){
   const name=state.profile?.name||'';
@@ -1668,17 +1465,6 @@ function rStats(){
   <div class="chart-title">🦵 Rehab este mes</div>
   <div class="chart-sub">${new Date().toLocaleString('es',{month:'long',year:'numeric'})} · verde = día completado</div>
   <div class="month-grid">${monthDots}</div>
-</div>
-
-<div class="chart-card" style="margin-bottom:0">
-  <div class="chart-title">⚙️ Tu perfil</div>
-  <div class="chart-sub">Configuración guardada del onboarding</div>
-  <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Nombre</span><span style="font-weight:700">${state.profile?.name||'—'}</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Meta rehab</span><span style="font-weight:700">${state.profile?.rehabDaysGoal||4} días/semana</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Recordatorio</span><span style="font-weight:700">${state.profile?.reminderEnabled?'🔔 '+state.profile.reminderTime:'Desactivado'}</span></div>
-    <button onclick="document.getElementById('onboardingScreen').classList.remove('hidden');obStep=1;obUpdSlide();obUpdDots()" style="margin-top:4px;padding:9px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--blue);font-family:'Sora',sans-serif">Editar perfil</button>
-  </div>
 </div>`;
 }
 
@@ -1783,6 +1569,7 @@ function ensureUnifiedState(){
   if(!state.profile.reminderTime) state.profile.reminderTime='19:00';
   if(!state.profile.rehabDaysGoal) state.profile.rehabDaysGoal=4;
   if(state.profile.rehabEnabled===undefined) state.profile.rehabEnabled=true;
+  state.profile.onboardingDone=true;
 
   if(state.tab==='journal'||state.tab==='recomp') state.tab='home';
   if(!state.training||typeof state.training!=='object') state.training={weights:{},prs:{}};
@@ -2000,9 +1787,8 @@ async function showApp(){
   ensureUnifiedState();
   document.getElementById('loginScreen').classList.add('hidden');
   const _ma=document.getElementById('mainApp');if(_ma)_ma.style.display='block';
-  if(!state.profile?.onboardingDone)setTimeout(showOnboarding,60);
   checkDailyReminder();startJournalNotifLoop();renderAll();
-  if(state.profile?.onboardingDone&&(await getPinHash())&&!pinUnlocked)showPinScreen('unlock');
+  if((await getPinHash())&&!pinUnlocked)showPinScreen('unlock');
 }
 async function doLogout(){
   closeModal('logoutModal');flushSave();if(journalNotifTimer){clearInterval(journalNotifTimer);journalNotifTimer=null}await auth.signOut();appLoaded=false;pinUnlocked=false;state=DS();ensureUnifiedState();
@@ -2191,7 +1977,6 @@ function render(){
 }
 
 function rHome(){
-  if(!state.profile?.onboardingDone)return rInlineOnboarding();
   const name=state.profile?.name||'';
   const nz=isNonZeroDay(),mins=DEFAULT_MINIMUMS.filter(m=>state.minimumSettings[m.id]?.active!==false);
   const doneMins=mins.filter(m=>['minimum','complete'].includes(getMinimum(m.id).status)).length;
@@ -2398,66 +2183,6 @@ function toggleMinimumSetting(id){
   saveState();openHabitsEditor();
 }
 
-let obGoal='todo',obReminderDraft=false,obPinDraft='',obMinDraft=null,obRehabDraft=true;
-function showOnboarding(start=0){
-  ensureUnifiedState();
-  obStep=start;obDaysGoal=state.profile?.rehabDaysGoal||4;obGoal=state.profile?.primaryGoal||'todo';obReminderDraft=!!state.profile?.reminderEnabled;obPinDraft='';
-  obRehabDraft=state.profile?.rehabEnabled!==false;
-  obMinDraft={};DEFAULT_MINIMUMS.forEach(m=>{obMinDraft[m.id]=state.minimumSettings[m.id]?.active!==false});
-  renderOnboarding();
-  document.getElementById('onboardingScreen').classList.remove('hidden');
-}
-function openProfileOnboarding(){showOnboarding(1)}
-function obUpdSlide(){renderOnboarding()}
-function obUpdDots(){renderOnboarding()}
-function obSelectGoal(goal){obGoal=goal;if(goal==='rehab')obRehabDraft=true;renderOnboarding()}
-function obSetRehabEnabled(value){obRehabDraft=!!value;renderOnboarding()}
-function obToggleMin(id){obMinDraft[id]=!obMinDraft[id];renderOnboarding()}
-function obSelDay(n){obDaysGoal=n;renderOnboarding()}
-async function obNext(){
-  if(obStep===1){
-    const n=document.getElementById('obNameNew')?.value.trim()||'';
-    if(!n){document.getElementById('obNameNew')?.focus();return}
-    state.profile.name=n;
-  }
-  if(obStep===5){
-    const t=document.getElementById('obTimeNew')?.value||'19:00';
-    state.profile.reminderTime=t;state.profile.reminderEnabled=!!document.getElementById('obReminderNew')?.checked;
-    if(state.profile.reminderEnabled&&'Notification'in window){
-      const perm=Notification.permission==='granted'?'granted':await Notification.requestPermission().catch(()=>'denied');
-      state.profile.reminderEnabled=perm==='granted';
-    }
-  }
-  if(obStep===6){
-    const pin=document.getElementById('obPinNew')?.value.trim()||'';
-    if(pin&&/^\d{4}$/.test(pin)){await setPin(pin);pinUnlocked=true}
-    else if(pin){alert('El PIN debe tener 4 numeros.');return}
-  }
-  if(obStep>=7){finishOnboarding();return}
-  obStep++;renderOnboarding();
-}
-function obPrev(){obStep=Math.max(0,obStep-1);renderOnboarding()}
-function finishOnboarding(){
-  if(!state.profile)state.profile={};
-  state.profile.primaryGoal=obGoal;state.profile.rehabDaysGoal=obDaysGoal;state.profile.rehabEnabled=obGoal==='rehab'?true:!!obRehabDraft;state.profile.onboardingDone=true;
-  DEFAULT_MINIMUMS.forEach(m=>{state.minimumSettings[m.id]={active:obMinDraft[m.id]!==false}});
-  document.getElementById('onboardingScreen').classList.add('hidden');saveState();checkDailyReminder();renderAll();
-}
-function renderOnboarding(){
-  const goals=[['rehab','Recuperar pierna'],['habits','Crear hábitos'],['study','Estudiar mejor'],['fitness','Mejorar físico'],['projects','Construir proyectos'],['todo','Todo un poco']];
-  const dots=Array.from({length:8},(_,i)=>`<div class="ob-dot ${i===obStep?'active':''}"></div>`).join('');
-  let body='';
-  if(obStep===0)body=`<div class="ob-logo">🏋️</div><div class="ob-appname">MAXER</div><div class="ob-step-title">Construye días no-cero</div><div class="ob-step-sub">Rehab, hábitos, diario y progreso en una sola app. No buscamos días perfectos: buscamos aparecer.</div><div class="ob-features"><div class="ob-feat"><span class="ob-feat-icon">🦵</span><div><div class="ob-feat-title">Rehab y entrenos</div><div class="ob-feat-desc">Mantienes MAXER completo</div></div></div><div class="ob-feat"><span class="ob-feat-icon">✍️</span><div><div class="ob-feat-title">Diario integrado</div><div class="ob-feat-desc">Una frase también salva el día</div></div></div></div>`;
-  if(obStep===1)body=`<div class="ob-step-title">¿Cómo te llamas?</div><div class="ob-step-sub">Usaré tu nombre solo para que la app se sienta tuya.</div><input class="ob-input" id="obNameNew" value="${esc(state.profile?.name||'')}" placeholder="Tu nombre" maxlength="20">`;
-  if(obStep===2)body=`<div class="ob-step-title">Objetivo principal</div><div class="ob-step-sub">Elige el foco. Podras cambiarlo despues.</div><div class="choice-grid">${goals.map(g=>`<button class="choice-btn ${obGoal===g[0]?'sel':''}" onclick="obSelectGoal('${g[0]}')">${g[1]}</button>`).join('')}</div>`;
-  if(obStep===3)body=`<div class="ob-step-title">Mínimos diarios</div><div class="ob-step-sub">Activa solo lo que quieres ver en Hoy.</div><div class="min-grid">${DEFAULT_MINIMUMS.map(m=>`<button class="min-toggle ${obMinDraft[m.id]?'on':''}" onclick="obToggleMin('${m.id}')">${m.emoji} ${m.name}</button>`).join('')}</div>`;
-  if(obStep===4)body=(obGoal==='rehab'?`<div class="ob-step-title">Rehab semanal</div><div class="ob-step-sub">Una meta flexible, no una obligación rígida.</div>`:`<div class="ob-step-title">Rehab</div><div class="ob-step-sub">Puedes incluir la rutina si ahora te sirve, o dejarla desactivada sin perder datos.</div><div class="choice-grid"><button class="choice-btn ${obRehabDraft?'sel':''}" onclick="obSetRehabEnabled(true)">Sí, incluir rehab</button><button class="choice-btn ${!obRehabDraft?'sel':''}" onclick="obSetRehabEnabled(false)">No por ahora</button></div>`)+(obGoal==='rehab'||obRehabDraft?`<div class="ob-days-row"><button class="ob-day-btn ${obDaysGoal===3?'sel':''}" onclick="obSelDay(3)">3 días<br><span style="font-size:10px;opacity:.6">mínimo</span></button><button class="ob-day-btn ${obDaysGoal===4?'sel':''}" onclick="obSelDay(4)">4 días<br><span style="font-size:10px;opacity:.6">recomendado</span></button><button class="ob-day-btn ${obDaysGoal===5?'sel':''}" onclick="obSelDay(5)">5 días<br><span style="font-size:10px;opacity:.6">intensivo</span></button></div>`:'');
-  if(obStep===5)body=`<div class="ob-step-title">Recordatorio</div><div class="ob-step-sub">Un aviso amable para hacer acto de presencia.</div><div class="ob-time-wrap"><input class="ob-time-input" id="obTimeNew" type="time" value="${state.profile?.reminderTime||'19:00'}"></div><label class="choice-btn sel" style="display:flex;align-items:center;gap:10px"><input id="obReminderNew" type="checkbox" ${obReminderDraft?'checked':''}> Activar notificaciones si el navegador lo permite</label>`;
-  if(obStep===6)body=`<div class="ob-step-title">PIN opcional</div><div class="ob-step-sub">Protege la app completa en este dispositivo. No se sincroniza con Firebase.</div><input class="ob-input" id="obPinNew" type="password" inputmode="numeric" maxlength="4" placeholder="4 dígitos o vacío para saltar"><button class="ob-btn ghost" onclick="document.getElementById('obPinNew').value=''">Saltar PIN</button>`;
-  if(obStep===7)body=`<div class="ob-logo" style="font-size:48px">✨</div><div class="ob-step-title">Listo.</div><div class="ob-step-sub">Hoy solo tienes que hacer acto de presencia. Con poco también cuenta.</div><div class="ob-features"><div class="ob-feat"><span class="ob-feat-icon">🌱</span><div><div class="ob-feat-title">Día no-cero</div><div class="ob-feat-desc">Mínimo hecho, diario o una acción de rescate</div></div></div></div>`;
-  const next=obStep===7?'Empezar':'Continuar';
-  document.getElementById('onboardingScreen').innerHTML=`<div class="ob-slides"><div class="ob-dots">${dots}</div><div class="ob-slide active"><div class="ob-progress-text">Paso ${obStep+1} de 8</div>${body}<div style="display:flex;gap:8px;width:100%;margin-top:8px">${obStep>0?'<button class="ob-btn ghost" onclick="obPrev()">Atras</button>':''}<button class="ob-btn primary" onclick="obNext()">${next}</button></div></div></div>`;
-}
 function checkDailyReminder(){
   if(!state.profile?.reminderEnabled||!state.profile?.reminderTime)return;
   if('Notification'in window&&Notification.permission==='granted'){
