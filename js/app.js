@@ -957,7 +957,7 @@ async function loadFS(){
     }
   }catch(e){
     console.warn('[MAXER] No se pudo cargar Firestore; usando localStorage.',e);
-    setSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?'Error nube':'Sin conexión - guardado local');
+    setSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?'Error nube':'Sin conexión');
     loadLocal(false);
   }
   processLoad();
@@ -983,16 +983,16 @@ function saveState(){
   if(currentUser){
     pendingCloudSave=p;
     clearTimeout(saveTimer);
-    if(!navigator.onLine){setSyncStatus('offline','Sin conexión - guardado local');return}
+    if(!navigator.onLine){setSyncStatus('offline','Sin conexión');return}
     setSyncStatus('saving','Guardando...');
     saveTimer=setTimeout(()=>fsWrite(p),400);
   }else if(localOk){
-    setSyncStatus('saved','Guardado local',true);
+    setSyncStatus('saved','Guardado',true);
   }
 }
 function fsWrite(data){
   if(!currentUser)return;
-  if(!navigator.onLine){pendingCloudSave=data;setSyncStatus('offline','Sin conexión - guardado local');return}
+  if(!navigator.onLine){pendingCloudSave=data;setSyncStatus('offline','Sin conexión');return}
   setSyncStatus('saving','Guardando...');
   Promise.all([
     db.collection('users').doc(currentUser.uid).collection('data').doc('state').set(cloudStatePayload(data)),
@@ -1002,7 +1002,7 @@ function fsWrite(data){
     .catch(e=>{
       pendingCloudSave=data;
       console.warn('[MAXER] Error sincronizando Firestore; se conserva localStorage.',e);
-      setSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?'Error nube':'Sin conexión - guardado local');
+      setSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?'Error nube':'Sin conexión');
     });
 }
 function flushSave(){clearTimeout(saveTimer);ensureUnifiedState();if(currentUser)fsWrite(pendingCloudSave||JSON.parse(JSON.stringify(state)))}
@@ -1463,6 +1463,10 @@ function rSettings(){
     <div class="settings-card"><div class="settings-card-title">Aplicación</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Buscar actualizaciones</div><div class="settings-help">Limpia la caché y recarga con la última versión. Útil tras una actualización.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="forceUpdate(this)">Actualizar</button></div>
     </div>
+    <div class="settings-card"><div class="settings-card-title">✨ Asistente IA</div>
+      <div class="settings-help" style="margin-bottom:8px">Pega la URL de tu Cloudflare Worker para activar el chat IA (botón ✨ flotante). Sin URL, el asistente no funciona.</div>
+      <input class="settings-input" style="width:100%;max-width:none" value="${esc(localStorage.getItem('maxer_worker_url')||'')}" placeholder="https://tu-worker.workers.dev" oninput="localStorage.setItem('maxer_worker_url',this.value.trim())">
+    </div>
     <div class="settings-card"><div class="settings-card-title">Cuenta</div>
       <div class="settings-actions"><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button></div>
     </div>
@@ -1496,7 +1500,7 @@ function checkDailyReminder(){
 function retryPendingCloudSave(){
   if(currentUser&&pendingCloudSave&&navigator.onLine)fsWrite(pendingCloudSave);
 }
-window.addEventListener('offline',()=>setSyncStatus('offline','Sin conexión - guardado local'));
+window.addEventListener('offline',()=>setSyncStatus('offline','Sin conexión'));
 window.addEventListener('online',()=>{setSyncStatus('saving','Reconectando...');retryPendingCloudSave();});
 
 // ══ RECOMPOSICIÓN FÍSICA ══════════════════════════════════════

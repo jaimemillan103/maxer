@@ -8,11 +8,11 @@
 
 /css/*
   Content-Type: text/css; charset=utf-8
-  Cache-Control: public, max-age=86400
+  Cache-Control: no-cache
 
 /js/*
   Content-Type: text/javascript; charset=utf-8
-  Cache-Control: public, max-age=86400
+  Cache-Control: no-cache
 
 /service-worker.js
   Cache-Control: no-cache
