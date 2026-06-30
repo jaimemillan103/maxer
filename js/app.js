@@ -686,28 +686,36 @@ async function toggleReminder(){
   checkDailyReminder();
   render();
 }
+let statsMonth=null;
+function changeStatsMonth(delta){
+  ensureUnifiedState();
+  const now=new Date();
+  if(!statsMonth)statsMonth={y:now.getFullYear(),m:now.getMonth()};
+  let m=statsMonth.m+delta,y=statsMonth.y;
+  if(m<0){m=11;y--}if(m>11){m=0;y++}
+  if(y>now.getFullYear()||(y===now.getFullYear()&&m>now.getMonth()))return; // no avanzar al futuro
+  statsMonth={y,m};render();
+}
 function rStats(){
   const name=state.profile?.name||'';
   const hist=state.history||{};
 
-  // Build last 7 days array
+  // Semana actual: lunes → domingo
+  const base=new Date();
+  const dow=base.getDay()===0?7:base.getDay(); // 1=Lun .. 7=Dom
+  const monday=new Date();monday.setDate(base.getDate()-(dow-1));
+  const WD=['L','M','X','J','V','S','D'];
   const days=[];
-  for(let i=6;i>=0;i--){
-    const d=new Date();d.setDate(d.getDate()-i);
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);d.setDate(monday.getDate()+i);
     const key=d.toISOString().slice(0,10);
     const isToday=key===td();
-    const label=['L','M','X','J','V','S','D'][d.getDay()===0?6:d.getDay()-1];
     const entry=hist[key]||null;
-    days.push({key,label,isToday,
-      xp: isToday?(state.xpToday||0):(entry?.xp||0),
-      pushups: isToday?tPush():(entry?.pushups||0),
-      rehabDone: isToday?((state.rehabXpToday||0)>0):(entry?.rehabDone||false)
-    });
+    days.push({key,label:WD[i],isToday,xp:isToday?(state.xpToday||0):(entry?.xp||0)});
   }
 
-  // SVG bar chart helper
-  function barChart(data,maxVal,colorFrom,colorTo,unit){
-    if(maxVal===0) return '<div class="empty-chart">Sin datos esta semana</div>';
+  // Gráfico de barras XP (muestra el número de XP encima de cada barra)
+  function barChart(data,maxVal,colorFrom,colorTo){
     const W=320,H=80,barW=32,gap=(W-barW*7)/6;
     let svgBars='',svgVals='';
     data.forEach((d,i)=>{
@@ -717,38 +725,43 @@ function rStats(){
       const by=H-bh;
       svgBars+=`<defs><linearGradient id="bg${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${colorFrom}"/><stop offset="100%" stop-color="${colorTo}"/></linearGradient></defs>`;
       svgBars+=`<rect x="${x}" y="${by}" width="${barW}" height="${bh}" rx="6" fill="${d>0?'url(#bg'+i+')':'#E4E8F5'}"/>`;
-      if(d>0) svgVals+=`<text x="${x+barW/2}" y="${by-4}" text-anchor="middle" font-size="9" font-weight="700" fill="${colorFrom}" font-family="JetBrains Mono,monospace">${d}</text>`;
+      svgVals+=`<text x="${x+barW/2}" y="${d>0?by-4:H-4}" text-anchor="middle" font-size="9" font-weight="700" fill="${d>0?colorFrom:'#cbd5e1'}" font-family="JetBrains Mono,monospace">${d}</text>`;
     });
     return `<svg viewBox="0 0 ${W} ${H+16}" width="100%" style="overflow:visible">${svgBars}${svgVals}</svg>`;
   }
 
   const xpVals=days.map(d=>d.xp);
-  const pushVals=days.map(d=>d.pushups);
   const maxXP=Math.max(...xpVals,1);
-  const maxPush=Math.max(...pushVals,1);
   const labelHtml=days.map(d=>`<span class="bar-label${d.isToday?' today':''}">${d.label}${d.isToday?'*':''}</span>`).join('');
 
-  // Month rehab dots
-  const now=new Date(),year=now.getFullYear(),month=now.getMonth();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-  const todayN=now.getDate();
-  let monthDots='';
-  for(let d=1;d<=daysInMonth;d++){
-    const key=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  // Calendario de rehab con navegación de meses
+  const now=new Date();
+  if(!statsMonth)statsMonth={y:now.getFullYear(),m:now.getMonth()};
+  const my=statsMonth.y,mm=statsMonth.m;
+  let monthLabel=new Date(my,mm,1).toLocaleString('es',{month:'long',year:'numeric'});
+  monthLabel=monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1);
+  const firstDow=(new Date(my,mm,1).getDay()+6)%7; // huecos antes del día 1 (base lunes)
+  const dim=new Date(my,mm+1,0).getDate();
+  const todayMid=new Date();todayMid.setHours(0,0,0,0);
+  const calHead=WD.map(w=>`<div class="cal-head">${w}</div>`).join('');
+  let cells='';
+  for(let i=0;i<firstDow;i++)cells+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const key=`${my}-${String(mm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const done=(hist[key]?.rehabDone)||(key===td()&&(state.rehabXpToday||0)>0);
-    const isToday=d===todayN;
-    const future=d>todayN;
-    monthDots+=`<div class="month-dot${done?' rehab-done':isToday?' today-dot':''}" style="${future?'opacity:0.35':''}" title="Día ${d}">${d}</div>`;
+    const isToday=key===td();
+    const future=new Date(my,mm,d)>todayMid;
+    cells+=`<div class="cal-cell${done?' done':''}${isToday?' today':''}"${future?' style="opacity:.3"':''}>${d}</div>`;
   }
+  const isCurrentMonth=my===now.getFullYear()&&mm===now.getMonth();
 
-  // All-time summary
-  const totalPushAllTime=Object.values(hist).reduce((s,h)=>s+(h.pushups||0),0)+tPush();
+  // Resumen
   const totalRehabDays=state.rehabDaysTotal||0;
   const bestStreak=state.streak||0;
   const totalXP=state.xp||0;
 
   return `
-<div class="sec-head"><div class="sec-title">📊 Progreso${name?' · '+name:''}</div><div class="sec-sub">Historial de los últimos 7 días</div></div>
+<div class="sec-head"><div class="sec-title">📊 Progreso${name?' · '+name:''}</div><div class="sec-sub">Tu constancia semana a semana</div></div>
 
 <div class="summary-row">
   <div class="sum-card"><div class="sum-val">${totalXP}</div><div class="sum-lbl">XP Total</div></div>
@@ -758,22 +771,19 @@ function rStats(){
 
 <div class="chart-card">
   <div class="chart-title">⚡ XP ganado por día</div>
-  <div class="chart-sub">Últimos 7 días · * = hoy</div>
-  <div class="chart-wrap">${barChart(xpVals,maxXP,'#1a2035','#2d3a52','XP')}</div>
+  <div class="chart-sub">Esta semana · * = hoy</div>
+  <div class="chart-wrap">${barChart(xpVals,maxXP,'#1a2035','#2d3a52')}</div>
   <div class="bar-labels">${labelHtml}</div>
 </div>
 
 <div class="chart-card">
-  <div class="chart-title">💪 Flexiones por día</div>
-  <div class="chart-sub">Últimos 7 días · objetivo 75/día</div>
-  <div class="chart-wrap">${barChart(pushVals,Math.max(maxPush,75),'#1a2035','#2d3a52','reps')}</div>
-  <div class="bar-labels">${labelHtml}</div>
-</div>
-
-<div class="chart-card">
-  <div class="chart-title">🦵 Rehab este mes</div>
-  <div class="chart-sub">${new Date().toLocaleString('es',{month:'long',year:'numeric'})} · verde = día completado</div>
-  <div class="month-grid">${monthDots}</div>
+  <div class="cal-nav">
+    <button class="cal-nav-btn" onclick="changeStatsMonth(-1)" aria-label="Mes anterior">‹</button>
+    <div class="cal-month">${monthLabel}</div>
+    <button class="cal-nav-btn${isCurrentMonth?' disabled':''}" ${isCurrentMonth?'disabled':''} onclick="changeStatsMonth(1)" aria-label="Mes siguiente">›</button>
+  </div>
+  <div class="chart-sub" style="margin-bottom:10px">🦵 Rehab · <span style="color:var(--green2);font-weight:700">verde</span> = día completado</div>
+  <div class="cal-grid">${calHead}${cells}</div>
 </div>`;
 }
 

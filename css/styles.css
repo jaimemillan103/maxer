@@ -335,10 +335,18 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .sum-card{flex:1;background:var(--surface);border-radius:12px;padding:12px;border:1px solid var(--border);text-align:center}
 .sum-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text)}
 .sum-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:3px}
-.month-grid{display:flex;flex-wrap:wrap;gap:5px}
-.month-dot{width:24px;height:24px;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);font-weight:700;transition:all .2s}
-.month-dot.rehab-done{background:var(--green);border-color:transparent;color:#fff}
-.month-dot.today-dot{border-color:var(--text);border-width:2px;color:var(--text)}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-month{font-size:14px;font-weight:800;color:var(--text)}
+.cal-nav-btn{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.cal-nav-btn:active{background:var(--surface2)}
+.cal-nav-btn.disabled,.cal-nav-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal-head{text-align:center;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-bottom:2px}
+.cal-cell{aspect-ratio:1;border-radius:8px;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted)}
+.cal-cell.empty{background:transparent;border:none}
+.cal-cell.done{background:var(--green);border-color:transparent;color:#fff}
+.cal-cell.today{border-color:var(--text);border-width:2px;color:var(--text)}
+.cal-cell.done.today{color:#fff}
 
 /* Unified MAXER */
 .screen-lock{position:fixed;inset:0;z-index:220;background:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 26px;color:#fff}
