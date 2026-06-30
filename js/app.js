@@ -1460,11 +1460,31 @@ function rSettings(){
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
     </div>
     ${getStateSizeWarningHtml()}
+    <div class="settings-card"><div class="settings-card-title">Aplicación</div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Buscar actualizaciones</div><div class="settings-help">Limpia la caché y recarga con la última versión. Útil tras una actualización.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="forceUpdate(this)">Actualizar</button></div>
+    </div>
     <div class="settings-card"><div class="settings-card-title">Cuenta</div>
       <div class="settings-actions"><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button></div>
     </div>
   </div>
   <div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">Zona de peligro</div><div class="danger-btns"><button class="danger-btn" onclick="promptDayReset()">Reset día de hoy</button><button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button><button class="danger-btn" onclick="openDeleteAccountModal()">Eliminar cuenta</button></div></div>`;
+}
+async function forceUpdate(btn){
+  if(btn){btn.disabled=true;btn.textContent='Actualizando…';}
+  // Guarda los datos antes de recargar (no se borra nada del usuario, solo la caché de archivos)
+  try{flushSave();}catch(e){}
+  try{
+    if('serviceWorker'in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+    }
+    if('caches'in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(e){console.warn('[MAXER] forceUpdate:',e);}
+  // Recarga forzando red (evita la versión cacheada)
+  location.replace(location.pathname+'?u='+Date.now());
 }
 function checkDailyReminder(){
   if(!state.profile?.reminderEnabled||!state.profile?.reminderTime)return;
