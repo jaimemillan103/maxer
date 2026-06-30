@@ -1453,6 +1453,28 @@ function getStateSizeWarningHtml(){
   if(bytes<=750*1024)return '';
   return `<div class="settings-card"><div class="settings-card-title">Aviso de datos</div><div class="settings-help">Tus datos están creciendo mucho. Pronto convendrá optimizar el diario en una fase posterior.</div></div>`;
 }
+function openHabitsEditor(){
+  ensureUnifiedState();
+  const habHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Hábitos diarios</div>${
+    HABITS.map(h=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${h.emoji} ${h.label}</div></div><button class="settings-toggle ${state.habitSettings[h.id]===false?'':'on'}" onclick="toggleHabitSetting('${h.id}')"></button></div>`).join('')
+  }</div>`;
+  const minHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Mínimos diarios</div>${
+    DEFAULT_MINIMUMS.map(m=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${m.emoji} ${m.name}</div><div class="settings-help">${m.desc}</div></div><button class="settings-toggle ${state.minimumSettings[m.id]?.active!==false?'on':''}" onclick="toggleMinimumSetting('${m.id}')"></button></div>`).join('')
+  }</div>`;
+  document.getElementById('habitsEditorContent').innerHTML=habHtml+minHtml;
+  openSheet('habitsEditorOverlay');
+}
+function toggleHabitSetting(id){
+  ensureUnifiedState();
+  state.habitSettings[id]=state.habitSettings[id]===false?true:false;
+  saveState();openHabitsEditor();
+}
+function toggleMinimumSetting(id){
+  ensureUnifiedState();
+  if(!state.minimumSettings[id]) state.minimumSettings[id]={active:true};
+  state.minimumSettings[id].active=!state.minimumSettings[id].active;
+  saveState();openHabitsEditor();
+}
 function rSettings(){
   ensureUnifiedState();const p=state.profile||{};
   return `<div class="sec-head"><div class="sec-title">Ajustes</div><div class="sec-sub">Configuración personal de la app.</div></div>
@@ -1464,6 +1486,9 @@ function rSettings(){
     <div class="settings-card"><div class="settings-card-title">Recordatorios</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Notificación diaria</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo.':'Pide permiso al navegador.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
+    </div>
+    <div class="settings-card"><div class="settings-card-title">Personalizar</div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva qué hábitos y mínimos diarios ves cada día.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>
     </div>
     ${getStateSizeWarningHtml()}
     <div class="settings-card"><div class="settings-card-title">Aplicación</div>

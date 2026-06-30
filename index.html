@@ -180,6 +180,18 @@
 
 <div id="printView" class="print-view"></div>
 
+<div class="sheet-overlay" id="habitsEditorOverlay">
+  <div class="sheet-panel" style="max-height:90vh;overflow-y:auto">
+    <div class="sheet-handle"></div>
+    <div class="sec-head">
+      <div class="sec-title">Hábitos y Mínimos</div>
+      <div class="sec-sub">Activa o desactiva lo que quieres ver cada día.</div>
+    </div>
+    <div id="habitsEditorContent"></div>
+    <button class="modal-btn primary" style="width:100%;margin:8px 0 4px" onclick="closeSheet('habitsEditorOverlay');renderHabits();render()">Listo</button>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header" id="mainHeader">
   <div class="header-row">
