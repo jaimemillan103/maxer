@@ -457,7 +457,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .save-day-btn{width:100%;border:0;border-radius:14px;background:var(--text);color:#fff;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;margin:10px 0 14px;box-shadow:var(--sh)}
 .rescue-grid{display:grid;grid-template-columns:1fr;gap:8px}
 .rescue-btn{border:1.5px solid var(--border);background:var(--bg);border-radius:13px;padding:12px;text-align:left;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;font-family:'Sora',sans-serif}
-.train-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+
 .choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-bottom:16px}
 .choice-btn{border:1.5px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:rgba(255,255,255,.68);border-radius:13px;padding:12px 9px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Sora',sans-serif;text-align:left}
 .choice-btn.sel{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4);color:#fff}
@@ -622,6 +622,25 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
       </div>
       <button class="ob-btn primary" onclick="obFinish(true)">Activar recordatorio 🔔</button>
       <button class="ob-btn ghost" onclick="obFinish(false)">Saltar por ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECOMP ENTRY MODAL -->
+<div class="modal-overlay hidden" id="recompModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3>Registrar medición</h3>
+    <p>Guarda tu peso y % de grasa de hoy. Cada registro suma +20 XP.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">PESO (kg)</label><input id="recompWeightIn" class="settings-input" type="number" inputmode="decimal" step="0.1" placeholder="92.0" style="width:100%"></div>
+        <div style="flex:1"><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">GRASA (%)</label><input id="recompBFIn" class="settings-input" type="number" inputmode="decimal" step="0.5" placeholder="16.0" style="width:100%"></div>
+      </div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">NOTA (opcional)</label><input id="recompNotesIn" class="settings-input" placeholder="Cómo me siento hoy..." style="width:100%"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeModal('recompModal')">Cancelar</button>
+      <button class="modal-btn primary" onclick="saveRecompEntry2()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1017,28 +1036,6 @@ function saveInlineOnboarding(){
   saveState();renderAll();
 }
 
-// ══ SETTINGS HEADER (profile + actions) ═══════════════════════
-function _rSettingsHeader(){
-  return `<div class="sec-head"><div class="sec-title">⚙️ Ajustes</div><div class="sec-sub">Perfil y configuración</div></div>
-<div class="chart-card" style="margin-bottom:12px">
-  <div class="chart-title">👤 Perfil</div>
-  <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;margin-top:8px">
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Nombre</span><span style="font-weight:700">${state.profile?.name||'—'}</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Meta rehab</span><span style="font-weight:700">${state.profile?.rehabDaysGoal||4} días/sem</span></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-weight:600">Recordatorio</span><span style="font-weight:700">${state.profile?.reminderEnabled?'🔔 '+state.profile.reminderTime:'—'}</span></div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button onclick="state.profile.onboardingDone=false;saveState();render()" style="flex:1;padding:9px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--blue);font-family:'Sora',sans-serif">✏️ Editar perfil</button>
-      <button onclick="document.getElementById('logoutModal').classList.remove('hidden')" style="flex:1;padding:9px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:'Sora',sans-serif">👋 Cerrar sesión</button>
-    </div>
-  </div>
-</div>
-<div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">⚠️ Zona de peligro</div>
-<div class="danger-btns">
-  <button class="danger-btn" onclick="promptDayReset()">Reset día de hoy</button>
-  <button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button>
-</div></div>`;
-}
-
 // ══ AUTH ══════════════════════════════════════════════════
 let appLoaded = false; // flag: solo carga datos la PRIMERA vez
 
@@ -1307,94 +1304,8 @@ function renderHabits(){
     return `<div class="habit-chip${done?' done':''}" role="checkbox" tabindex="0" aria-checked="${done?'true':'false'}" aria-label="${esc(h.label)} ${done?'hecho':'pendiente'}" onclick="toggleHabit('${h.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleHabit('${h.id}')}"><span class="habit-emoji">${done?'✅':h.emoji}</span><span class="habit-label">${h.label}</span></div>`
   }).join('')
 }
-function toggleHabit(id){
-  const h=HABITS.find(x=>x.id===id);
-  if(false){/*no counter habits*/}
-  else{state.habits[id]=!state.habits[id];if(state.habits[id]) awardXP(3,'Hábito')}
-  if(HABITS.every(h2=>h2.type==='counter'?(state.habits[h2.id]||0)>=h2.max:!!state.habits[h2.id])&&!state.habitXpToday){state.habitXpToday=true;awardXP(25,'⭐ Todos los hábitos')}
-  saveState();renderHabits();checkAch();
-}
-
-// ══ PUSH ══════════════════════════════════════════════════
-function addPS(tid){if(!state.pushups[tid]) state.pushups[tid]=[];state.pushups[tid].push({reps:0,done:false});saveState();render()}
-function remPS(tid,i){state.pushups[tid].splice(i,1);saveState();render()}
-function togPS(tid,i){
-  const s=state.pushups[tid][i];s.done=!s.done;
-  if(s.done){startRest(45);const aw=Math.max(0,Math.floor((s.reps||0)/5));s.xpAwarded=aw;if(aw>0) awardXP(aw,'💪 Flexiones');if(tPush()>=75&&state.pushXpAwarded<75){awardXP(50,'🔥 75 Flexiones!');state.pushXpAwarded=75}}
-  else{const aw=s.xpAwarded||0;s.xpAwarded=0;if(aw>0) deductXP(aw,false);if(tPush()<75&&state.pushXpAwarded>=75){deductXP(50,false);state.pushXpAwarded=0}saveState()}
-  saveState();render()
-}
-function setReps(tid,i,v){state.pushups[tid][i].reps=Math.max(0,parseInt(v)||0);saveState()}
-
-// ══ REHAB ═════════════════════════════════════════════════
-function togRehab(exId,i,ex){
-  if(!state.legs[exId]) state.legs[exId]=[];
-  const cur=state.legs[exId][i];
-  if(!cur&&ex.unit==='s'){startTimer(typeof ex.reps==='number'?ex.reps:parseInt(ex.reps),ex.name,()=>{state.legs[exId][i]=true;startRest(45);awardXP(2,'⏱️ Serie rehab',true);checkRehabDone();saveState();render()})}
-  else if(!cur){state.legs[exId][i]=true;startRest(45);awardXP(2,'🦵 Serie rehab',true);checkRehabDone();saveState();render()}
-  else{state.legs[exId][i]=false;deductXP(2,true);if(state.rehabXpToday>0){deductXP(state.rehabXpToday,true);state.rehabXpToday=0;state.rehabDaysTotal=Math.max(0,(state.rehabDaysTotal||0)-1);state.rehabDaysThisWeek=Math.max(0,(state.rehabDaysThisWeek||0)-1)}saveState();render()}
-}
-function checkRehabDone(){
-  const w=RW[state.rehabWeek],exs=w.exercises;
-  const tot=exs.reduce((s,e)=>s+(e.perLeg?e.sets*2:e.sets),0);
-  const done=exs.reduce((s,e)=>s+((state.legs[e.id]||[]).filter(Boolean).length),0);
-  if(done===tot&&tot>0&&state.rehabXpToday===0){const b=30;state.rehabXpToday=b;state.rehabDaysTotal=(state.rehabDaysTotal||0)+1;state.rehabDaysThisWeek=(state.rehabDaysThisWeek||0)+1;awardXP(b,'🏆 Rehab completa',true);saveState()}
-}
 function getLbls(ex){const l=[];for(let i=0;i<ex.sets;i++){if(ex.perLeg){l.push('S'+(i+1)+'I');l.push('S'+(i+1)+'D')}else l.push('S'+(i+1))}return l}
 function swRW(w){state.rehabWeek=w;state.legs={};saveState();render()}
-
-// ══ GENERAL ═══════════════════════════════════════════════
-function togGen(exId,i,ex){
-  if(!state.general[exId]) state.general[exId]=[];
-  const cur=state.general[exId][i];
-  if(!cur&&ex.unit==='s'){startTimer(typeof ex.reps==='number'?ex.reps:parseInt(ex.reps),ex.name,()=>{state.general[exId][i]=true;startRest(45);awardXP(2,'💪 General');saveState();render()})}
-  else if(!cur){state.general[exId][i]=true;startRest(45);awardXP(2,'💪 General');saveState();render()}
-  else{state.general[exId][i]=false;deductXP(2,false);saveState();render()}
-}
-
-// ══ RENDER ════════════════════════════════════════════════
-function renderAll(){updateHeader();renderHabits();render()}
-function render(){
-  const c=document.getElementById('content');
-  switch(state.tab){
-    case 'home':c.innerHTML=rHome();break;case 'rehab':c.innerHTML=rRehab();break;
-    case 'push':c.innerHTML=rPush();break;case 'general':c.innerHTML=rGen();break;
-    case 'stats':c.innerHTML=rSettings();break;
-    case 'settings':c.innerHTML=rSettings();break;
-  }
-  document.querySelectorAll('.reps-input').forEach(inp=>inp.addEventListener('input',e=>{const{type:t,idx:i}=e.target.dataset;setReps(t,parseInt(i),e.target.value)}))
-}
-
-function rHome(){
-  if(!state.profile?.onboardingDone) return rInlineOnboarding();
-  const pr=tPush(),lv=lvl(state.xp),dtw=state.rehabDaysThisWeek||0;
-  const rPct=Math.round((state.rehabDaysTotal||0)/90*100);
-  const wk=RW[state.rehabWeek];
-  const rt=wk.exercises.reduce((s,e)=>s+(e.perLeg?e.sets*2:e.sets),0);
-  const rd=wk.exercises.reduce((s,e)=>s+((state.legs[e.id]||[]).filter(Boolean).length),0);
-  const wAchs=ACH.filter(a=>a.weekly),pAchs=ACH.filter(a=>!a.weekly);
-  const decay=state._decayMsg?'<div class="decay-warning"><span>⚠️</span><span>'+state._decayMsg+'</span></div>':'';
-  const wrbDots=Array.from({length:4},(_,i)=>{const done=i<dtw,isBonus=i===3,isTgt=i===2&&!done;return'<div class="wrb-dot'+(done?(isBonus?' bonus':' done'):(isTgt?' target':''))+'"></div>'}).join('');
-  const name=state.profile?.name;
-  const greet=name?'<div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:10px">👋 Hola, <strong style="color:var(--text)">'+name+'</strong></div>':'';
-  return decay+greet+
-'<div class="daily-summary"><div class="ds-title">RECUPERACIÓN TOTAL</div><div class="ds-value">'+rPct+'%</div><div class="ds-sub">'+(state.rehabDaysTotal===0?'Empieza hoy':'Día '+state.rehabDaysTotal+' de 90')+' · '+(state.rehabXp||0)+' XP rehab</div></div>'+
-'<div class="week-rehab-bar"><div class="wrb-header"><div class="wrb-title">🦵 Rehab esta semana</div><div class="wrb-badge '+(dtw>=3?'goal':'')+'">'+dtw+'/3 días '+(dtw>=4?'🔥':dtw>=3?'✅':'')+'</div></div><div class="wrb-dots">'+wrbDots+'</div><div class="wrb-labels"><span>Días completados</span><span>Meta: 3</span><span>Bonus: 4</span></div></div>'+
-'<div class="stats-grid">'+
-'<div class="stat-card accent"><div class="stat-label">XP TOTAL</div><div class="stat-val">'+state.xp+'</div><div class="stat-sub">'+lv.name+'</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+Math.min(((state.xp-lv.min)/(lv.max-lv.min))*100,100)+'%"></div></div></div>'+
-'<div class="stat-card"><div class="stat-label">RACHA</div><div class="stat-val">'+state.streak+'</div><div class="stat-sub">días seguidos</div></div>'+
-'<div class="stat-card"><div class="stat-label">FLEXIONES HOY</div><div class="stat-val">'+pr+'</div><div class="stat-sub">/ 75 objetivo</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+Math.min(pr/75*100,100)+'%"></div></div></div>'+
-'<div class="stat-card"><div class="stat-label">REHAB HOY</div><div class="stat-val">'+rd+'</div><div class="stat-sub">/ '+rt+' series</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+(rt?rd/rt*100:0)+'%"></div></div></div>'+
-'</div>'+
-'<div class="sec-head" style="margin-bottom:8px"><div class="sec-title">🏆 Esta semana</div><div class="sec-sub">Se reinician cada lunes</div></div>'+
-'<div class="achieve-wrap"><div class="achieve-scroll">'+wAchs.map(a=>'<div class="achieve-chip'+(state.weeklyEarned.includes(a.id)?' earned':'')+'"><span>'+a.emoji+'</span><span class="ach-name">'+a.name+'</span></div>').join('')+'</div></div>'+
-'<div class="sec-head" style="margin-bottom:8px"><div class="sec-title">🎖️ Permanentes</div></div>'+
-'<div class="achieve-wrap" style="margin-bottom:14px"><div class="achieve-scroll">'+pAchs.map(a=>'<div class="achieve-chip'+(state.earned.includes(a.id)?' earned':'')+'"><span>'+a.emoji+'</span><span class="ach-name">'+a.name+'</span></div>').join('')+'</div></div>'+
-'<div class="rehab-timeline"><div class="timeline-header"><div class="timeline-title">Plan 90 días</div><div class="timeline-badge">'+(state.rehabDaysTotal||0)+'/90</div></div>'+
-'<div class="phase-dots">'+Array.from({length:90},(_,i)=>{const n=i+1,done=n<=(state.rehabDaysTotal||0),isToday=n===(state.rehabDaysTotal||0)+1;return'<div class="phase-dot'+(done?' done':isToday?' today':'')+'" title="Día '+n+'"></div>'}).join('')+'</div>'+
-'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-weight:600;margin-top:4px"><span>Sem 1</span><span>Mes 2</span><span>Fin 🎯</span></div></div>'+
-'';
-}
 
 const REHAB_WARMUP=[
   {emoji:'⭕',name:'Círculos de tobillo',detail:'30s c/lado · lento y controlado'},
@@ -1455,22 +1366,6 @@ function rRehab(){
   h+=`<div class="info-box" style="margin-top:4px">🧊 Al terminar: 5 min de hielo si hay inflamación · estiramiento suave de cuádriceps e isquios</div>`;
 
   if(done===tot&&tot>0) h+=`<div class="complete-banner">🦵 ¡Sesión completada! +30 XP · Día ${totalDays} de 90</div>`;
-  return h;
-}
-
-function rPush(){
-  const tot=tPush();
-  let h='<div class="sec-head"><div class="sec-title">💪 Flexiones</div><div class="sec-sub">Objetivo: <span>75 reps</span>. Cada 5 reps = <span>+1 XP</span>. 75 total = <span>+50 XP bonus</span>.</div></div>'+
-'<div class="stats-grid" style="margin-bottom:12px">'+
-'<div class="stat-card'+(tot>=75?' accent':'')+'"><div class="stat-label">TOTAL HOY</div><div class="stat-val">'+tot+'</div><div class="stat-sub">'+(tot>=75?'¡Objetivo!':'/ 75')+'</div><div class="stat-bar"><div class="stat-bar-fill" style="width:'+Math.min(tot/75*100,100)+'%"></div></div></div>'+
-'<div class="stat-card"><div class="stat-label">TIPOS USADOS</div><div class="stat-val">'+Object.values(state.pushups).filter(s=>s.length>0).length+'</div><div class="stat-sub">de '+PT.length+'</div></div></div>';
-  for(const t of PT){
-    const sets=state.pushups[t.id]||[],tt=sets.reduce((s,x)=>s+(x.reps||0),0),all=sets.length>0&&sets.every(s=>s.done);
-    h+=`<div class="card${all?' completed':''}"><div class="card-head"><div class="card-info"><span class="card-emoji">${t.emoji}</span><div><div class="card-name">${t.name}</div><div class="card-desc">${t.desc}</div></div></div><div class="push-total${tt>0?' active':''}">${tt}</div></div>`+
-    '<div class="push-sets">'+sets.map((s,i)=>`<div class="push-set-row${s.done?' done':''}"><button class="check-btn${s.done?' done':''}" aria-label="${esc(t.name)} serie ${i+1}: ${s.done?'completada':'marcar completada'}" aria-pressed="${s.done?'true':'false'}" onclick="togPS('${t.id}',${i})">${s.done?'<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5L4 8L9.5 2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</button><span class="push-set-label">Serie ${i+1}</span><input class="reps-input" type="number" inputmode="numeric" value="${s.reps||''}" placeholder="0" data-type="${t.id}" data-idx="${i}"><span class="push-unit">reps</span><button class="del-btn" aria-label="Borrar ${esc(t.name)} serie ${i+1}" onclick="remPS('${t.id}',${i})">✕</button></div>`).join('')+'</div>'+
-    `<button class="add-set-btn" onclick="addPS('${t.id}')">+ Añadir serie</button></div>`;
-  }
-  if(tot>=75) h+='<div class="complete-banner">🔥 ¡75 Flexiones! +50 XP</div>';
   return h;
 }
 
@@ -1665,56 +1560,6 @@ function openProfileOnboarding(){
   obUpdDots();
   document.getElementById('onboardingScreen').classList.remove('hidden');
 }
-function _rSettingsHeader(){
-  const p=state.profile||{};
-  return `<div class="sec-head"><div class="sec-title">Ajustes</div><div class="sec-sub">Perfil, recordatorios y configuración</div></div>
-<div class="settings-grid">
-  <div class="settings-card">
-    <div class="settings-card-title">Perfil</div>
-    <div class="settings-row">
-      <div class="settings-meta"><div class="settings-label">Nombre</div><div class="settings-help">Se usa en saludos y recordatorios.</div></div>
-      <div class="settings-control"><input class="settings-input" value="${p.name||''}" maxlength="20" placeholder="Tu nombre" oninput="updProfileName(this.value)"></div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-meta"><div class="settings-label">Meta rehab</div><div class="settings-help">Objetivo semanal visible en inicio.</div></div>
-      <div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">
-        ${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} dias/sem</option>`).join('')}
-      </select></div>
-    </div>
-  </div>
-  <div class="settings-card">
-    <div class="settings-card-title">Recordatorio</div>
-    <div class="settings-row">
-      <div class="settings-meta"><div class="settings-label">Activar aviso</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo':'Pide permiso al navegador al activarlo.'}</div></div>
-      <button class="settings-toggle${p.reminderEnabled?' on':''}" onclick="toggleReminder()" aria-label="Activar recordatorio"></button>
-    </div>
-    <div class="settings-row">
-      <div class="settings-meta"><div class="settings-label">Hora</div><div class="settings-help">Se programa mientras la app este abierta.</div></div>
-      <div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div>
-    </div>
-  </div>
-  <div class="settings-card">
-    <div class="settings-card-title">✨ Asistente IA</div>
-    <div class="settings-row">
-      <div class="settings-meta"><div class="settings-label">URL del Worker</div><div class="settings-help">Cloudflare Worker que conecta con Claude. Déjalo vacío si no lo has configurado aún.</div></div>
-    </div>
-    <div style="margin-top:4px"><input class="settings-input" style="width:100%" value="${localStorage.getItem('maxer_worker_url')||''}" placeholder="https://tu-worker.workers.dev" oninput="localStorage.setItem('maxer_worker_url',this.value.trim())"></div>
-  </div>
-  <div class="settings-card">
-    <div class="settings-card-title">App</div>
-    <div class="settings-actions">
-      <button class="settings-action primary" onclick="openProfileOnboarding()">Editar onboarding</button>
-      <button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesion</button>
-    </div>
-  </div>
-</div>
-<div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">Zona de peligro</div>
-<div class="danger-btns">
-  <button class="danger-btn" onclick="promptDayReset()">Reset dia de hoy</button>
-  <button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button>
-</div></div>`;
-}
-function rSettings(){return _rSettingsHeader()+rStats();}
 function rStats(){
   const name=state.profile?.name||'';
   const hist=state.history||{};
@@ -1875,7 +1720,7 @@ function cloudStatePayload(data){
   if(!p.journal||typeof p.journal!=='object')p.journal={};
   p.journal.entries={};
   delete p.tab;
-  delete p.trainingTab;
+
   delete p.hiperDay;
   delete p.journalUi;
   return p;
@@ -1918,7 +1763,7 @@ function ensureUnifiedState(){
   if(!state.profile.reminderTime) state.profile.reminderTime='19:00';
   if(!state.profile.rehabDaysGoal) state.profile.rehabDaysGoal=4;
   if(state.profile.rehabEnabled===undefined) state.profile.rehabEnabled=true;
-  if(!state.trainingTab) state.trainingTab='push';
+
   if(state.tab==='journal'||state.tab==='recomp') state.tab='home';
   if(!state.training||typeof state.training!=='object') state.training={weights:{},prs:{}};
   if(!state.training.weights||typeof state.training.weights!=='object') state.training.weights={};
@@ -2301,7 +2146,7 @@ function updateNavActive(){
   const settingsBtn=document.getElementById('settingsBtn');if(settingsBtn)settingsBtn.className='settings-btn'+(state.tab==='settings'?' active':'');
 }
 function switchTab(t){
-  if(t==='push'||t==='general'){state.trainingTab=t;state.tab='training'}else state.tab=t;
+  state.tab=t;
   updateNavActive();
   saveState();render();
 }
@@ -2408,10 +2253,78 @@ async function toggleJournalNotif(){
 function startJournalNotifLoop(){if(journalNotifTimer)clearInterval(journalNotifTimer);journalNotifTimer=setInterval(checkJournalNotification,30000);checkJournalNotification()}
 function checkJournalNotification(){const n=state.journal?.notifications;if(!n?.enabled||!n.time||!('Notification'in window)||Notification.permission!=='granted')return;const now=new Date(),[hh,mm]=n.time.split(':').map(Number);if(now.getHours()!==hh||now.getMinutes()!==mm)return;const last='maxer_journal_notif_'+td();if(localStorage.getItem(last))return;localStorage.setItem(last,'1');if(String(journalEntries()[td()]||'').trim())return;new Notification('MAXER Diario',{body:'Una frase basta. Hoy también puede contar.',icon:'/icon-192.png'})}
 
+function rRecompCard(){
+  ensureUnifiedState();
+  const entries=state.recomp.entries||{};
+  const dates=Object.keys(entries).sort();
+  const latest=dates.length?entries[dates[dates.length-1]]:null;
+  const goal=state.recomp.goal||{};
+  const startW=goal.startWeight||92,targetW=goal.targetWeight||85;
+  const curW=latest?.weight||startW;
+  const startBF=goal.startBF||16,targetBF=goal.targetBF||11;
+  const curBF=latest?.bf||startBF;
+  const wPct=Math.max(0,Math.min(100,Math.round((startW-curW)/(startW-targetW)*100)));
+  const bfPct=Math.max(0,Math.min(100,Math.round((startBF-curBF)/(startBF-targetBF)*100)));
+  return `<div class="chart-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div><div class="chart-title">Composición corporal</div><div class="chart-sub">${dates.length} mediciones registradas</div></div>
+      <button onclick="openRecompEntry()" style="background:var(--text);color:#fff;border:none;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">+ Registrar</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Peso actual</div>
+        <div style="font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace">${curW}<span style="font-size:13px;font-weight:600;color:var(--muted)"> kg</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Meta: ${targetW} kg</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Grasa corporal</div>
+        <div style="font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace">${curBF}<span style="font-size:13px;font-weight:600;color:var(--muted)"> %</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Meta: ${targetBF}%</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px"><span style="color:var(--muted)">Peso</span><span>${wPct}% del objetivo</span></div>
+        <div style="height:6px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;background:var(--text);border-radius:6px;width:${wPct}%;transition:width .5s"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px"><span style="color:var(--muted)">Grasa</span><span>${bfPct}% del objetivo</span></div>
+        <div style="height:6px;background:var(--bg);border-radius:6px;overflow:hidden"><div style="height:100%;background:var(--green);border-radius:6px;width:${bfPct}%;transition:width .5s"></div></div>
+      </div>
+    </div>
+    ${dates.length>=2?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:12px;font-size:12px">
+      <span style="color:var(--muted)">Desde inicio:</span>
+      <span style="font-weight:700;color:${curW<startW?'var(--green)':'var(--muted)'}">${curW<startW?'−'+(startW-curW).toFixed(1)+' kg':'= peso'}</span>
+      <span style="font-weight:700;color:${curBF<startBF?'var(--green)':'var(--muted)'}">${curBF<startBF?'−'+(startBF-curBF).toFixed(1)+'% BF':'= BF'}</span>
+    </div>`:''}
+  </div>`;
+}
+function openRecompEntry(){
+  const today=td();
+  const ex=state.recomp.entries?.[today]||{};
+  document.getElementById('recompWeightIn').value=ex.weight||'';
+  document.getElementById('recompBFIn').value=ex.bf||'';
+  document.getElementById('recompNotesIn').value=ex.notes||'';
+  document.getElementById('recompModal').classList.remove('hidden');
+}
+function saveRecompEntry2(){
+  ensureUnifiedState();
+  const today=td();
+  const w=parseFloat(document.getElementById('recompWeightIn').value)||0;
+  const bf=parseFloat(document.getElementById('recompBFIn').value)||0;
+  const notes=document.getElementById('recompNotesIn').value.trim();
+  if(!w&&!bf){closeModal('recompModal');return}
+  if(!state.recomp.entries) state.recomp.entries={};
+  state.recomp.entries[today]={weight:w||undefined,bf:bf||undefined,notes:notes||undefined};
+  if(!state.recomp.xpToday){state.recomp.xpToday=true;awardXP(20,'Medición cuerpo')}
+  saveState();closeModal('recompModal');render();
+}
 function rProgress(){
-  const entries=journalEntries(),written=Object.values(entries).filter(v=>String(v||'').trim()).length,minsToday=DEFAULT_MINIMUMS.filter(m=>['minimum','complete'].includes(getMinimum(m.id).status)).length;
-  return `<div class="sec-head"><div class="sec-title">Progreso</div><div class="sec-sub">Constancia real, mínimos y MAXER completo.</div></div>`+
-  `<div class="summary-row"><div class="sum-card"><div class="sum-val">${nonZeroStreak()}</div><div class="sum-lbl">No-cero</div></div><div class="sum-card"><div class="sum-val">${minsToday}</div><div class="sum-lbl">Mínimos hoy</div></div><div class="sum-card"><div class="sum-val">${written}</div><div class="sum-lbl">Diario</div></div></div>`+
+  const minsToday=DEFAULT_MINIMUMS.filter(m=>['minimum','complete'].includes(getMinimum(m.id).status)).length;
+  const prs=Object.keys(state.training?.prs||{}).length;
+  return `<div class="sec-head"><div class="sec-title">Progreso</div><div class="sec-sub">Constancia, composición y estadísticas.</div></div>`+
+  `<div class="summary-row"><div class="sum-card"><div class="sum-val">${nonZeroStreak()}</div><div class="sum-lbl">No-cero</div></div><div class="sum-card"><div class="sum-val">${minsToday}</div><div class="sum-lbl">Mínimos hoy</div></div><div class="sum-card"><div class="sum-val">${prs}</div><div class="sum-lbl">PRs</div></div></div>`+
+  rRecompCard()+
   rStats();
 }
 function getStateSizeWarningHtml(){
