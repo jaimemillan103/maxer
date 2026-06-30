@@ -811,6 +811,10 @@ function renderSyncStatus(){
   el.textContent=syncMessage;
 }
 function setSyncStatus(status,message,autoHide=false){
+  // No mostramos los estados rutinarios de guardado (molesto). Solo avisos útiles: sin conexión / error.
+  if(status==='saving'||status==='saved'){
+    syncStatus='idle';syncMessage='';clearTimeout(syncTimer);renderSyncStatus();return;
+  }
   syncStatus=status;syncMessage=message||'';
   clearTimeout(syncTimer);
   renderSyncStatus();
@@ -1644,13 +1648,20 @@ Rehab ACL: semana ${state.rehabWeek||1}/4.
 Hoy: ${seriesHoy} series de entrenamiento completadas, racha ${state.streak||0} días, XP total ${state.xp||0}.
 Historial (7d): ${wHistory}.`;
 }
+function mdFormat(s){
+  // Escapa HTML y luego aplica un markdown mínimo: **negrita**, *cursiva* y saltos de línea
+  return esc(s)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>')
+    .replace(/\n/g,'<br>');
+}
 function renderAIMessages(){
   const c=document.getElementById('aiMessages');if(!c)return;
   if(!aiMessages.length){
     c.innerHTML='<div class="ai-msg ai">¡Hola! Soy tu asistente de fitness. Puedo ayudarte con tu plan de entrenamiento, nutrición, rehab o responder cualquier duda. ¿En qué te ayudo hoy?</div>';
     return;
   }
-  c.innerHTML=aiMessages.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'ai'}">${esc(m.content).replace(/\n/g,'<br>')}</div>`).join('');
+  c.innerHTML=aiMessages.map(m=>`<div class="ai-msg ${m.role==='user'?'user':'ai'}">${mdFormat(m.content)}</div>`).join('');
   c.scrollTop=c.scrollHeight;
 }
 async function sendAIMsg(){
