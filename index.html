@@ -45,7 +45,8 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 #loadingScreen.hidden{display:none}
 .spinner{width:30px;height:30px;border:2.5px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.login-logo{font-size:48px;margin-bottom:10px}
+.login-logo{width:66px;height:66px;margin-bottom:14px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.35))}
+.login-logo svg{width:100%;height:100%;display:block}
 .login-appname{font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;margin-bottom:4px}
 .login-tagline{color:rgba(255,255,255,.38);font-size:12px;text-align:center;line-height:1.5;margin-bottom:28px}
 .login-card{background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px 18px;width:100%;max-width:360px}
@@ -63,8 +64,10 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .login-guest{color:rgba(255,255,255,.3);font-size:12px;text-align:center;cursor:pointer;text-decoration:underline;font-weight:500;display:block;margin-top:10px}
 .user-btn{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ─── HEADER ─── */
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top)+14px) 18px 12px;position:sticky;top:0;z-index:30;box-shadow:var(--sh)}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(env(safe-area-inset-top) + 14px) max(20px, env(safe-area-inset-right)) 12px max(20px, env(safe-area-inset-left));position:sticky;top:0;z-index:30;box-shadow:var(--sh)}
 .header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.app-brand{display:flex;align-items:center;gap:9px}
+.app-logo{width:28px;height:28px;flex-shrink:0;display:block}
 .app-name{font-size:19px;font-weight:800;color:var(--blue);letter-spacing:-0.3px}
 .header-badges{display:flex;gap:6px;align-items:center}
 .xp-badge{background:var(--text);color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px}
@@ -230,7 +233,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .timer-skip:active{background:rgba(255,255,255,0.15)}
 
 /* ─── REST TOAST ─── */
-.rest-toast{position:fixed;bottom:calc(env(safe-area-inset-bottom)+16px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;z-index:50;display:flex;align-items:center;gap:12px;min-width:240px;box-shadow:var(--sh2);animation:slideUp 0.3s ease}
+.rest-toast{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 16px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;z-index:50;display:flex;align-items:center;gap:12px;min-width:240px;box-shadow:var(--sh2);animation:slideUp 0.3s ease}
 .rest-toast.hidden{display:none}
 @keyframes slideUp{from{transform:translateX(-50%) translateY(16px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
 .rest-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
@@ -270,7 +273,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .pr-badge.empty{color:var(--faint);border-color:var(--faint)}
 
 /* ─── AI CHAT ─── */
-.ai-fab{position:fixed;bottom:calc(env(safe-area-inset-bottom)+72px);right:16px;width:46px;height:46px;border-radius:50%;background:var(--text);color:#fff;border:none;font-size:20px;cursor:pointer;z-index:25;box-shadow:var(--sh2);display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.ai-fab{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 72px);right:16px;width:46px;height:46px;border-radius:50%;background:var(--text);color:#fff;border:none;font-size:20px;cursor:pointer;z-index:25;box-shadow:var(--sh2);display:flex;align-items:center;justify-content:center;transition:transform .15s}
 .ai-fab:active{transform:scale(.92)}
 .ai-overlay{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,0.4);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
 .ai-overlay.hidden{display:none}
@@ -283,7 +286,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .ai-msg.user{background:var(--text);color:#fff;align-self:flex-end;border-radius:12px 12px 2px 12px}
 .ai-msg.ai{background:var(--surface2);color:var(--text);align-self:flex-start;border-radius:2px 12px 12px 12px;border:1px solid var(--border)}
 .ai-msg.thinking{color:var(--muted);font-style:italic;background:transparent;border:none;padding-left:0}
-.ai-input-row{padding:10px 14px calc(env(safe-area-inset-bottom)+10px);border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end}
+.ai-input-row{padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end}
 .ai-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:'Sora',sans-serif;padding:9px 12px;outline:none;resize:none;max-height:100px;overflow-y:auto}
 .ai-input:focus{border-color:var(--text)}
 .ai-send{width:38px;height:38px;border-radius:10px;background:var(--text);color:#fff;border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -292,7 +295,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .ai-chip:active{background:var(--surface2)}
 
 /* ─── BOTTOM NAV ─── */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px max(16px,env(safe-area-inset-left)) calc(env(safe-area-inset-bottom)+8px) max(16px,env(safe-area-inset-right));gap:4px;z-index:30;box-shadow:0 -1px 0 var(--border)}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px max(18px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 8px) max(18px,env(safe-area-inset-left));gap:6px;z-index:30;box-shadow:0 -1px 0 var(--border)}
 .nav-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;padding:6px 4px;border-radius:10px;border:none;background:transparent;cursor:pointer;font-family:'Sora',sans-serif;transition:all 0.18s}
 .nav-btn .nav-icon{display:flex;align-items:center;justify-content:center;color:var(--blue);transition:all 0.18s}
 .nav-btn .nav-label{font-size:9px;font-weight:600;color:var(--muted);letter-spacing:0.3px;text-transform:uppercase;transition:color 0.18s}
@@ -506,7 +509,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 </section>
 
 <div id="loginScreen" class="hidden">
-  <div class="login-logo">🏋️</div>
+  <div class="login-logo"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="26" fill="#ffffff"/><path d="M25 74 V30 L50 55 L75 30 V74" fill="none" stroke="#1a2035" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <div class="login-appname">MAXER</div>
   <div class="login-tagline">Entrena · Rehab · Hábitos<br>Tu progreso en la nube</div>
   <div class="login-card">
@@ -654,22 +657,13 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 
 <div id="printView" class="print-view"></div>
 
-<div class="sheet-overlay" id="habitsEditorOverlay">
-  <div class="sheet-panel" style="max-height:90vh;overflow-y:auto">
-    <div class="sheet-handle"></div>
-    <div class="sec-head">
-      <div class="sec-title">Hábitos y Mínimos</div>
-      <div class="sec-sub">Activa o desactiva lo que quieres ver cada día.</div>
-    </div>
-    <div id="habitsEditorContent"></div>
-    <button class="modal-btn primary" style="width:100%;margin:8px 0 4px" onclick="closeSheet('habitsEditorOverlay');renderHabits();render()">Listo</button>
-  </div>
-</div>
-
 <!-- HEADER -->
 <div class="header" id="mainHeader">
   <div class="header-row">
-    <div class="app-name">MAXER</div>
+    <div class="app-brand">
+      <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="26" fill="#1a2035"/><path d="M25 74 V30 L50 55 L75 30 V74" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="app-name">MAXER</div>
+    </div>
     <div class="header-badges">
       <div class="streak-badge"><span id="hStreak">0</span> días</div>
       <div class="xp-badge"><span id="hXP">0</span> XP</div>
@@ -2172,9 +2166,6 @@ function rSettings(){
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Activa</div><div class="settings-help">${p.rehabEnabled===false?'Oculta sin borrar datos.':'Rutina visible y activa.'}</div></div><button class="settings-toggle ${p.rehabEnabled===false?'':'on'}" aria-pressed="${p.rehabEnabled===false?'false':'true'}" onclick="toggleRehabEnabled()"></button></div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Meta semanal</div><div class="settings-help">Días de rehab por semana.</div></div><div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} días</option>`).join('')}</select></div></div>
     </div>
-    <div class="settings-card"><div class="settings-card-title">Personalizar</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva cada hábito y mínimo diario.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>
-    </div>
     <div class="settings-card"><div class="settings-card-title">Recordatorios</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Notificación diaria</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo.':'Pide permiso al navegador.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
@@ -2186,29 +2177,6 @@ function rSettings(){
   </div>
   <div class="danger-zone" style="margin-bottom:12px"><div class="danger-title">Zona de peligro</div><div class="danger-btns"><button class="danger-btn" onclick="promptDayReset()">Reset día de hoy</button><button class="danger-btn" onclick="document.getElementById('fullResetModal').classList.remove('hidden')">Reset total</button><button class="danger-btn" onclick="openDeleteAccountModal()">Eliminar cuenta</button></div></div>`;
 }
-function openHabitsEditor(){
-  ensureUnifiedState();
-  const habHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Hábitos diarios</div>${
-    HABITS.map(h=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${h.emoji} ${h.label}</div></div><button class="settings-toggle ${state.habitSettings[h.id]===false?'':'on'}" onclick="toggleHabitSetting('${h.id}')"></button></div>`).join('')
-  }</div>`;
-  const minHtml=`<div class="settings-card" style="margin-bottom:12px"><div class="settings-card-title">Mínimos diarios</div>${
-    DEFAULT_MINIMUMS.map(m=>`<div class="settings-row"><div class="settings-meta"><div class="settings-label">${m.emoji} ${m.name}</div><div class="settings-help">${m.desc}</div></div><button class="settings-toggle ${state.minimumSettings[m.id]?.active!==false?'on':''}" onclick="toggleMinimumSetting('${m.id}')"></button></div>`).join('')
-  }</div>`;
-  document.getElementById('habitsEditorContent').innerHTML=habHtml+minHtml;
-  openSheet('habitsEditorOverlay');
-}
-function toggleHabitSetting(id){
-  ensureUnifiedState();
-  state.habitSettings[id]=state.habitSettings[id]===false?true:false;
-  saveState();openHabitsEditor();
-}
-function toggleMinimumSetting(id){
-  ensureUnifiedState();
-  if(!state.minimumSettings[id]) state.minimumSettings[id]={active:true};
-  state.minimumSettings[id].active=!state.minimumSettings[id].active;
-  saveState();openHabitsEditor();
-}
-
 function checkDailyReminder(){
   if(!state.profile?.reminderEnabled||!state.profile?.reminderTime)return;
   if('Notification'in window&&Notification.permission==='granted'){
