@@ -672,18 +672,77 @@ function updProfileField(key,value){
 function updProfileName(value){updProfileField('name',(value||'').trim())}
 function updRehabGoal(value){updProfileField('rehabDaysGoal',parseInt(value)||4);render()}
 function toggleRehabEnabled(value){updProfileField('rehabEnabled',value===undefined?!state.profile?.rehabEnabled:!!value);renderAll()}
-function updReminderTime(value){updProfileField('reminderTime',value||'19:00');checkDailyReminder()}
+function updReminderTime(value){
+  updProfileField('reminderTime',value||'19:00');
+  // Si las notificaciones ya están activas, re-suscribe para actualizar la hora en el servidor
+  if(state.profile?.reminderEnabled && ('Notification'in window) && Notification.permission==='granted') subscribeToPush();
+}
+
+// ── Push notifications reales ──────────────────────────────
+const VAPID_PUBLIC_KEY='BLf-cp8_QaALNe-uJndwqD2ohRlYjRo9Mpi6OObWVIQZSd1H3MqxbdQ7QbAcU1AiIrLl2wJgUloGZ-uNerhOfBQ';
+function urlBase64ToUint8Array(base64){
+  const pad='='.repeat((4-base64.length%4)%4);
+  const b64=(base64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(b64),arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+function pushWorkerUrl(){return (localStorage.getItem('maxer_worker_url')||'').trim().replace(/\/+$/,'');}
+function getPushId(){
+  if(currentUser?.uid)return 'u_'+currentUser.uid;
+  let id=localStorage.getItem('maxer_push_id');
+  if(!id){id='g_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('maxer_push_id',id)}
+  return id;
+}
+async function subscribeToPush(){
+  const url=pushWorkerUrl();
+  if(!url){alert('Primero configura la URL del Worker en Ajustes → ✨ Asistente IA.');return false;}
+  if(!('serviceWorker'in navigator)||!('PushManager'in window)){alert('Este dispositivo no soporta notificaciones push. En iPhone: añade MAXER a la pantalla de inicio y ábrela desde ahí.');return false;}
+  try{
+    const perm=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+    if(perm!=='granted'){alert('Permiso de notificaciones denegado.');return false;}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    const res=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      id:getPushId(),subscription:sub.toJSON(),time:state.profile?.reminderTime||'19:00',tzOffset:new Date().getTimezoneOffset()
+    })});
+    return res.ok;
+  }catch(e){console.warn('[MAXER] Error suscribiendo push:',e);alert('No se pudo activar el aviso: '+e.message);return false;}
+}
+async function unsubscribeFromPush(){
+  const url=pushWorkerUrl();
+  try{
+    if('serviceWorker'in navigator){
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.getSubscription();
+      if(sub)await sub.unsubscribe();
+    }
+    if(url)await fetch(url+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})}).catch(()=>{});
+  }catch(e){console.warn('[MAXER] Error dando de baja push:',e)}
+}
+async function sendTestPush(){
+  const url=pushWorkerUrl();
+  if(!url){alert('Configura la URL del Worker primero.');return;}
+  if(!state.profile?.reminderEnabled){alert('Activa primero las notificaciones.');return;}
+  try{
+    const res=await fetch(url+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})});
+    const d=await res.json().catch(()=>({}));
+    alert(res.ok?('Enviado (estado '+(d.status||'?')+'). Debería llegarte en unos segundos.'):('Error: '+(d.error||res.status)));
+  }catch(e){alert('Error enviando la prueba: '+e.message)}
+}
 async function toggleReminder(){
-  if(!state.profile) state.profile={};
+  ensureUnifiedState();
   const next=!state.profile.reminderEnabled;
   if(next){
-    if(!('Notification' in window)){alert('Este navegador no permite notificaciones.');return;}
-    const perm=Notification.permission==='granted'?'granted':await Notification.requestPermission().catch(()=>'denied');
-    if(perm!=='granted'){alert('No se han concedido permisos de notificación.');return;}
+    const ok=await subscribeToPush();
+    if(!ok){render();return;}
+    state.profile.reminderEnabled=true;
+  }else{
+    state.profile.reminderEnabled=false;
+    await unsubscribeFromPush();
   }
-  state.profile.reminderEnabled=next;
   saveState();
-  checkDailyReminder();
   render();
 }
 let statsMonth=null;
@@ -1494,8 +1553,9 @@ function rSettings(){
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Meta semanal</div><div class="settings-help">Días de rehab por semana.</div></div><div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} días</option>`).join('')}</select></div></div>
     </div>
     <div class="settings-card"><div class="settings-card-title">Recordatorios</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Notificación diaria</div><div class="settings-help">${p.reminderEnabled?'Recordatorio activo.':'Pide permiso al navegador.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Aviso diario</div><div class="settings-help">${p.reminderEnabled?'Activo. Llega aunque la app esté cerrada.':'Notificación push a tu hora, con la app cerrada.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
+      ${p.reminderEnabled?`<div class="settings-row"><div class="settings-meta"><div class="settings-label">Probar ahora</div><div class="settings-help">Envía una notificación de prueba.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="sendTestPush()">Enviar</button></div>`:''}
     </div>
     <div class="settings-card"><div class="settings-card-title">Personalizar</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva qué hábitos y mínimos diarios ves cada día.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'maxer-v12';
+const CACHE_NAME = 'maxer-v13';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
@@ -68,6 +68,34 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         return response;
       });
+    })
+  );
+});
+
+// ───────── Push notifications ─────────
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; }
+  catch (e) { data = { body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'MAXER';
+  const options = {
+    body: data.body || 'Hora de tu entrenamiento 💪',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: data.tag || 'maxer-reminder',
+    renotify: true,
+    data: { url: data.url || '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
 });
