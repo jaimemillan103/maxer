@@ -314,7 +314,7 @@ body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;max-wi
 .settings-input,.settings-select{width:100%;min-width:0;box-sizing:border-box;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;font-family:'Sora',sans-serif;padding:9px 10px;outline:none}
 .settings-input[type="time"]{-webkit-appearance:none;appearance:none;text-align:left}
 .settings-input:focus,.settings-select:focus{border-color:var(--blue)}
-.settings-toggle{width:48px;height:28px;border:1.5px solid var(--border);border-radius:999px;background:var(--bg);position:relative;cursor:pointer;transition:all .2s}
+.settings-toggle{width:48px;height:28px;flex-shrink:0;border:1.5px solid var(--border);border-radius:999px;background:var(--bg);position:relative;cursor:pointer;transition:all .2s}
 .settings-toggle::after{content:'';position:absolute;width:20px;height:20px;left:3px;top:2.5px;border-radius:50%;background:var(--surface);box-shadow:0 2px 8px rgba(26,29,46,.16);transition:all .2s}
 .settings-toggle.on{background:var(--text);border-color:transparent}
 .settings-toggle.on::after{transform:translateX(20px)}
