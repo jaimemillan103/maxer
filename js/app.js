@@ -672,10 +672,22 @@ function updProfileField(key,value){
 function updProfileName(value){updProfileField('name',(value||'').trim())}
 function updRehabGoal(value){updProfileField('rehabDaysGoal',parseInt(value)||4);render()}
 function toggleRehabEnabled(value){updProfileField('rehabEnabled',value===undefined?!state.profile?.rehabEnabled:!!value);renderAll()}
-function updReminderTime(value){
-  updProfileField('reminderTime',value||'19:00');
-  // Si las notificaciones ya están activas, re-suscribe para actualizar la hora en el servidor
+function _reSubscribeIfOn(){
   if(state.profile?.reminderEnabled && ('Notification'in window) && Notification.permission==='granted') subscribeToPush();
+}
+function updReminderMorning(value){updProfileField('reminderMorning',value||'10:00');_reSubscribeIfOn();}
+function updReminderEvening(value){updProfileField('reminderEvening',value||'20:00');_reSubscribeIfOn();}
+// Avisa al Worker de que hoy ya hay actividad (para que no mande recordatorios). Máx. una vez al día.
+let _donePingedDate=null;
+function markDoneToday(){
+  try{
+    if(!state.profile?.reminderEnabled)return;
+    const today=td();
+    if(_donePingedDate===today)return;
+    const url=pushWorkerUrl();if(!url)return;
+    _donePingedDate=today;
+    fetch(url+'/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})}).catch(()=>{_donePingedDate=null});
+  }catch(e){}
 }
 
 // ── Push notifications reales ──────────────────────────────
@@ -705,7 +717,10 @@ async function subscribeToPush(){
     let sub=await reg.pushManager.getSubscription();
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
     const res=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      id:getPushId(),subscription:sub.toJSON(),time:state.profile?.reminderTime||'19:00',tzOffset:new Date().getTimezoneOffset()
+      id:getPushId(),subscription:sub.toJSON(),
+      morning:state.profile?.reminderMorning||state.profile?.reminderTime||'10:00',
+      evening:state.profile?.reminderEvening||'20:00',
+      tzOffset:new Date().getTimezoneOffset()
     })});
     return res.ok;
   }catch(e){console.warn('[MAXER] Error suscribiendo push:',e);alert('No se pudo activar el aviso: '+e.message);return false;}
@@ -1062,6 +1077,7 @@ function saveState(){
   }else if(localOk){
     setSyncStatus('saved','Guardado',true);
   }
+  if(isNonZeroDay()) markDoneToday(); // avisa al Worker: hoy ya hay actividad
 }
 function fsWrite(data){
   if(!currentUser)return;
@@ -1553,9 +1569,11 @@ function rSettings(){
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Meta semanal</div><div class="settings-help">Días de rehab por semana.</div></div><div class="settings-control"><select class="settings-select" onchange="updRehabGoal(this.value)">${[3,4,5].map(d=>`<option value="${d}" ${(p.rehabDaysGoal||4)===d?'selected':''}>${d} días</option>`).join('')}</select></div></div>
     </div>
     <div class="settings-card"><div class="settings-card-title">Recordatorios</div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Aviso diario</div><div class="settings-help">${p.reminderEnabled?'Activo. Llega aunque la app esté cerrada.':'Notificación push a tu hora, con la app cerrada.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
-      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hora</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderTime||'19:00'}" onchange="updReminderTime(this.value)"></div></div>
-      ${p.reminderEnabled?`<div class="settings-row"><div class="settings-meta"><div class="settings-label">Probar ahora</div><div class="settings-help">Envía una notificación de prueba.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="sendTestPush()">Enviar</button></div>`:''}
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Avisos push</div><div class="settings-help">${p.reminderEnabled?'Activos. Llegan aunque la app esté cerrada, solo si no has hecho tu día.':'Notificaciones a tu hora, con la app cerrada.'}</div></div><button class="settings-toggle ${p.reminderEnabled?'on':''}" onclick="toggleReminder()"></button></div>
+      ${p.reminderEnabled?`
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">☀️ Aviso mañana</div><div class="settings-help">Recordatorio para empezar el día.</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderMorning||p.reminderTime||'10:00'}" onchange="updReminderMorning(this.value)"></div></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">⏳ Última llamada</div><div class="settings-help">Aviso de tarde si aún no lo has hecho.</div></div><div class="settings-control"><input class="settings-input" type="time" value="${p.reminderEvening||'20:00'}" onchange="updReminderEvening(this.value)"></div></div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Probar ahora</div><div class="settings-help">Envía una notificación de prueba.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="sendTestPush()">Enviar</button></div>`:''}
     </div>
     <div class="settings-card"><div class="settings-card-title">Personalizar</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva qué hábitos y mínimos diarios ves cada día.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>

@@ -29,12 +29,34 @@ export default {
     // ── Alta de suscripción push ──
     if (url.pathname === '/subscribe') {
       try {
-        const { id, subscription, time, tzOffset } = await request.json();
+        const { id, subscription, morning, evening, tzOffset } = await request.json();
         if (!id || !subscription) return jsonRes({ error: 'faltan datos' }, 400);
-        const [rh, rm] = String(time || '19:00').split(':').map(Number);
+        const [rh1, rm1] = String(morning || '10:00').split(':').map(Number);
+        const [rh2, rm2] = String(evening || '20:00').split(':').map(Number);
+        const prev = JSON.parse((await env.MAXER_PUSH.get(id)) || '{}');
         await env.MAXER_PUSH.put(id, JSON.stringify({
-          subscription, rh: rh || 19, rm: rm || 0, tzOffset: tzOffset || 0, lastSent: null,
+          subscription,
+          rh1: rh1 || 10, rm1: rm1 || 0, rh2: rh2 || 20, rm2: rm2 || 0,
+          tzOffset: tzOffset || 0,
+          doneDate: prev.doneDate || null, lastSent1: null, lastSent2: null,
         }));
+        return jsonRes({ ok: true });
+      } catch (e) {
+        return jsonRes({ error: String(e) }, 400);
+      }
+    }
+
+    // ── El cliente marca "hoy ya hecho" (para no molestar con recordatorios) ──
+    if (url.pathname === '/active') {
+      try {
+        const { id } = await request.json();
+        const raw = await env.MAXER_PUSH.get(id);
+        if (raw) {
+          const rec = JSON.parse(raw);
+          const local = new Date(Date.now() - (rec.tzOffset || 0) * 60000);
+          rec.doneDate = local.toISOString().slice(0, 10);
+          await env.MAXER_PUSH.put(id, JSON.stringify(rec));
+        }
         return jsonRes({ ok: true });
       } catch (e) {
         return jsonRes({ error: String(e) }, 400);
@@ -92,28 +114,39 @@ export default {
 
   // ───────── Cron: recorre las suscripciones y envía a su hora ─────────
   async scheduled(event, env, ctx) {
-    const now = new Date();
+    const now = Date.now();
+    const WIN = 10; // ventana en minutos (el cron corre cada 5)
     const list = await env.MAXER_PUSH.list();
     for (const k of list.keys) {
       try {
         const raw = await env.MAXER_PUSH.get(k.name);
         if (!raw) continue;
         const rec = JSON.parse(raw);
-        // Hora local del usuario = UTC - tzOffset(min).  getTimezoneOffset() = UTC-local (min).
-        const local = new Date(now.getTime() - (rec.tzOffset || 0) * 60000);
+        const local = new Date(now - (rec.tzOffset || 0) * 60000);
         const nmod = local.getUTCHours() * 60 + local.getUTCMinutes();
-        const rmod = (rec.rh || 19) * 60 + (rec.rm || 0);
-        const diff = nmod - rmod;
         const localDate = local.toISOString().slice(0, 10);
-        if (diff >= 0 && diff < 15 && rec.lastSent !== localDate) {
-          const status = await sendWebPush(rec.subscription,
-            JSON.stringify({ title: 'MAXER', body: 'Hora de tu entreno de hoy 💪 No rompas la racha.', url: '/' }),
+        if (rec.doneDate === localDate) continue; // ya hizo su día → no molestar
+
+        const send = async (body) => {
+          const st = await sendWebPush(rec.subscription, JSON.stringify({ title: 'MAXER', body, url: '/' }),
             env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY, env.VAPID_SUBJECT || 'mailto:test@example.com');
-          if (status === 404 || status === 410) {
-            await env.MAXER_PUSH.delete(k.name); // suscripción caducada
-          } else {
-            rec.lastSent = localDate;
-            await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
+          if (st === 404 || st === 410) { await env.MAXER_PUSH.delete(k.name); return false; }
+          return true;
+        };
+
+        // Aviso de mañana
+        const m1 = (rec.rh1 ?? rec.rh ?? 10) * 60 + (rec.rm1 ?? rec.rm ?? 0);
+        if (nmod - m1 >= 0 && nmod - m1 < WIN && rec.lastSent1 !== localDate) {
+          if (await send('☀️ Buenos días. Aún no has hecho tu día — ¿empezamos? 💪')) {
+            rec.lastSent1 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
+          }
+          continue;
+        }
+        // Aviso de tarde (última llamada)
+        const m2 = (rec.rh2 ?? 20) * 60 + (rec.rm2 ?? 0);
+        if (nmod - m2 >= 0 && nmod - m2 < WIN && rec.lastSent2 !== localDate) {
+          if (await send('⏳ Última llamada: haz aunque sea el mínimo y mantén la racha 🔥')) {
+            rec.lastSent2 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
           }
         }
       } catch (e) {
