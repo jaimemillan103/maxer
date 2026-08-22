@@ -68,6 +68,24 @@ export default {
       }
     }
 
+    // ── Diagnóstico (para depurar la config) ──
+    if (url.pathname === '/debug') {
+      const pub = env.VAPID_PUBLIC_KEY || '';
+      const priv = env.VAPID_PRIVATE_KEY || '';
+      let pubBytes = -1, pubErr = null;
+      try { pubBytes = b64urlToBytes(pub).length; } catch (e) { pubErr = String(e); }
+      let kvBound = false, subsCount = -1, subKeys = [];
+      try { const l = await env.MAXER_PUSH.list(); kvBound = true; subsCount = l.keys.length; subKeys = l.keys.map(k => k.name); }
+      catch (e) { kvBound = false; }
+      return jsonRes({
+        pubLen: pub.length, pubBytes, pubErr,
+        privLen: priv.length,
+        subject: env.VAPID_SUBJECT || null,
+        hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
+        kvBound, subsCount, subKeys,
+      });
+    }
+
     // ── Chat IA (comportamiento original en la raíz) ──
     return handleAI(request, env, cors);
   },
@@ -148,7 +166,7 @@ ${context || 'No hay datos disponibles.'}`;
 
 // ═══════════════ Web Push (VAPID + cifrado aes128gcm) ═══════════════
 function b64urlToBytes(s) {
-  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  s = String(s).replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/'); // quita espacios/saltos pegados
   const pad = s.length % 4; if (pad) s += '='.repeat(4 - pad);
   const bin = atob(s); const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -180,7 +198,7 @@ async function vapidJWT(endpoint, subject, vapidPub, vapidPriv) {
     kty: 'EC', crv: 'P-256', ext: true,
     x: bytesToB64url(pub.slice(1, 33)),
     y: bytesToB64url(pub.slice(33, 65)),
-    d: vapidPriv,
+    d: String(vapidPriv).replace(/\s+/g, ''),
   };
   const key = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(unsigned));
