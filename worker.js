@@ -33,11 +33,12 @@ export default {
         if (!id || !subscription) return jsonRes({ error: 'faltan datos' }, 400);
         const [rh1, rm1] = String(morning || '10:00').split(':').map(Number);
         const [rh2, rm2] = String(evening || '20:00').split(':').map(Number);
+        const prev = JSON.parse((await env.MAXER_PUSH.get(id)) || '{}');
         await env.MAXER_PUSH.put(id, JSON.stringify({
           subscription,
           rh1: rh1 || 10, rm1: rm1 || 0, rh2: rh2 || 20, rm2: rm2 || 0,
           tzOffset: tzOffset || 0,
-          doneDate: null, lastSent1: null, lastSent2: null, // se limpia al (re)suscribir; el cliente marca "hecho" si toca
+          snapshot: prev.snapshot || null, lastSent1: null, lastSent2: null,
         }));
         return jsonRes({ ok: true });
       } catch (e) {
@@ -45,15 +46,14 @@ export default {
       }
     }
 
-    // ── El cliente marca "hoy ya hecho" (para no molestar con recordatorios) ──
-    if (url.pathname === '/active') {
+    // ── El cliente sincroniza qué mínimos faltan hoy (para los avisos) ──
+    if (url.pathname === '/status' || url.pathname === '/active') {
       try {
-        const { id } = await request.json();
+        const { id, date, pending, active } = await request.json();
         const raw = await env.MAXER_PUSH.get(id);
         if (raw) {
           const rec = JSON.parse(raw);
-          const local = new Date(Date.now() - (rec.tzOffset || 0) * 60000);
-          rec.doneDate = local.toISOString().slice(0, 10);
+          rec.snapshot = { date: date || null, pending: pending || [], active: active || [] };
           await env.MAXER_PUSH.put(id, JSON.stringify(rec));
         }
         return jsonRes({ ok: true });
@@ -100,7 +100,7 @@ export default {
         const l = await env.MAXER_PUSH.list(); kvBound = true; subsCount = l.keys.length;
         for (const k of l.keys) {
           const r = JSON.parse((await env.MAXER_PUSH.get(k.name)) || '{}');
-          recs.push({ id: k.name, rh1: r.rh1, rm1: r.rm1, rh2: r.rh2, rm2: r.rm2, tzOffset: r.tzOffset, doneDate: r.doneDate, lastSent1: r.lastSent1, lastSent2: r.lastSent2, hasSub: !!r.subscription });
+          recs.push({ id: k.name, rh1: r.rh1, rm1: r.rm1, rh2: r.rh2, rm2: r.rm2, tzOffset: r.tzOffset, snapshot: r.snapshot, lastSent1: r.lastSent1, lastSent2: r.lastSent2, hasSub: !!r.subscription });
         }
       } catch (e) { kvBound = false; }
       // Hora local calculada para el primer registro (para comparar con tu reloj)
@@ -132,7 +132,12 @@ export default {
         const local = new Date(now - (rec.tzOffset || 0) * 60000);
         const nmod = local.getUTCHours() * 60 + local.getUTCMinutes();
         const localDate = local.toISOString().slice(0, 10);
-        if (rec.doneDate === localDate) continue; // ya hizo su día → no molestar
+
+        // ¿Qué mínimos faltan hoy? Usa el snapshot del cliente; si es de otro día, asume todos los activos.
+        const snap = rec.snapshot || {};
+        const pending = (snap.date === localDate) ? (snap.pending || []) : (snap.active || []);
+        if (!pending.length) continue; // nada pendiente → no molestar
+        const listStr = pending.slice(0, 4).join(', ') + (pending.length > 4 ? ` y ${pending.length - 4} más` : '');
 
         const send = async (body) => {
           const st = await sendWebPush(rec.subscription, JSON.stringify({ title: 'MAXER', body, url: '/' }),
@@ -144,7 +149,7 @@ export default {
         // Aviso de mañana
         const m1 = (rec.rh1 ?? rec.rh ?? 10) * 60 + (rec.rm1 ?? rec.rm ?? 0);
         if (nmod - m1 >= 0 && nmod - m1 < WIN && rec.lastSent1 !== localDate) {
-          if (await send('☀️ Buenos días. Aún no has hecho tu rehab hoy 🦵 ¿La sacamos?')) {
+          if (await send(`☀️ Buenos días. Te faltan por marcar: ${listStr}`)) {
             rec.lastSent1 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
           }
           continue;
@@ -152,7 +157,7 @@ export default {
         // Aviso de tarde (última llamada)
         const m2 = (rec.rh2 ?? 20) * 60 + (rec.rm2 ?? 0);
         if (nmod - m2 >= 0 && nmod - m2 < WIN && rec.lastSent2 !== localDate) {
-          if (await send('⏳ Última llamada para tu rehab de hoy 🦵 Aunque sea el mínimo, mantén la racha 🔥')) {
+          if (await send(`⏳ Última llamada. Aún te faltan: ${listStr} 🔥`)) {
             rec.lastSent2 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
           }
         }

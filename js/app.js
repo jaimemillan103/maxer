@@ -677,26 +677,28 @@ function _reSubscribeIfOn(){
 }
 function updReminderMorning(value){updProfileField('reminderMorning',value||'10:00');_reSubscribeIfOn();}
 function updReminderEvening(value){updProfileField('reminderEvening',value||'20:00');_reSubscribeIfOn();}
-// ¿Se ha hecho la rehab hoy? (XP de rehab, mínimo de rehab, o alguna serie marcada)
-function rehabDoneToday(){
+// Mínimos activos (excluye rehab si la rehab está desactivada)
+function activeMinimums(){
   ensureUnifiedState();
-  if((state.rehabXpToday||0)>0)return true;
-  const m=state.dailyMinimums?.[td()]?.rehab;
-  if(m&&['minimum','complete'].includes(m.status))return true;
-  if(Object.values(state.legs||{}).some(a=>Array.isArray(a)&&a.some(Boolean)))return true;
-  return false;
+  const rehabOff=state.profile?.rehabEnabled===false;
+  return DEFAULT_MINIMUMS.filter(m=>state.minimumSettings[m.id]?.active!==false && !(rehabOff&&m.id==='rehab'));
 }
-// Avisa al Worker de que hoy YA se hizo la rehab (para no recordarla). Máx. una vez al día.
-let _donePingedDate=null;
-function markDoneToday(){
+// Mínimos activos que aún NO están hechos hoy (ni marcados ni saltados)
+function pendingMinimums(){
+  return activeMinimums().filter(m=>!['minimum','complete','skipped'].includes(getMinimum(m.id).status));
+}
+function _localDateStr(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+// Sincroniza con el Worker qué mínimos faltan hoy (para los avisos). Solo si cambia.
+let _lastPushPayload=null;
+function syncPushStatus(){
   try{
     if(!state.profile?.reminderEnabled)return;
-    if(!rehabDoneToday())return;          // solo cuando la rehab está hecha
-    const today=td();
-    if(_donePingedDate===today)return;
     const url=pushWorkerUrl();if(!url)return;
-    _donePingedDate=today;
-    fetch(url+'/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})}).catch(()=>{_donePingedDate=null});
+    const payload={id:getPushId(),date:_localDateStr(),pending:pendingMinimums().map(m=>m.name),active:activeMinimums().map(m=>m.name)};
+    const key=JSON.stringify(payload);
+    if(key===_lastPushPayload)return;
+    _lastPushPayload=key;
+    fetch(url+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{_lastPushPayload=null});
   }catch(e){}
 }
 
@@ -732,7 +734,7 @@ async function subscribeToPush(){
       evening:state.profile?.reminderEvening||'20:00',
       tzOffset:new Date().getTimezoneOffset()
     })});
-    _donePingedDate=null; markDoneToday(); // re-sincroniza el estado de "rehab hecha"
+    _lastPushPayload=null; syncPushStatus(); // re-sincroniza los mínimos pendientes
     return res.ok;
   }catch(e){console.warn('[MAXER] Error suscribiendo push:',e);alert('No se pudo activar el aviso: '+e.message);return false;}
 }
@@ -1088,7 +1090,7 @@ function saveState(){
   }else if(localOk){
     setSyncStatus('saved','Guardado',true);
   }
-  markDoneToday(); // avisa al Worker si la rehab de hoy ya está hecha
+  syncPushStatus(); // sincroniza los mínimos pendientes con el Worker (para los avisos)
 }
 function fsWrite(data){
   if(!currentUser)return;
@@ -1359,9 +1361,13 @@ function updateNavActive(){
     const nav=document.getElementById('nav'+id.charAt(0).toUpperCase()+id.slice(1));
     if(nav){const active=state.tab===id;nav.className='nav-btn'+(active?' active':'');active?nav.setAttribute('aria-current','page'):nav.removeAttribute('aria-current')}
   });
+  // Oculta la pestaña Rehab si la rehab está desactivada
+  const navRehab=document.getElementById('navRehab');
+  if(navRehab)navRehab.style.display=(state.profile?.rehabEnabled===false)?'none':'';
   const settingsBtn=document.getElementById('settingsBtn');if(settingsBtn)settingsBtn.className='settings-btn'+(state.tab==='settings'?' active':'');
 }
 function switchTab(t){
+  if(t==='rehab'&&state.profile?.rehabEnabled===false)t='home'; // rehab off → no entrar
   state.tab=t;
   updateNavActive();
   saveState();render();
@@ -1369,6 +1375,7 @@ function switchTab(t){
 function renderAll(){ensureUnifiedState();updateHeader();renderHabits();render()}
 function render(){
   ensureUnifiedState();
+  if(state.tab==='rehab'&&state.profile?.rehabEnabled===false)state.tab='home';
   updateNavActive();
   const hs=document.getElementById('habitsSection');
   if(hs)hs.style.display=state.tab==='home'?'':'none';
