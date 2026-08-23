@@ -677,11 +677,21 @@ function _reSubscribeIfOn(){
 }
 function updReminderMorning(value){updProfileField('reminderMorning',value||'10:00');_reSubscribeIfOn();}
 function updReminderEvening(value){updProfileField('reminderEvening',value||'20:00');_reSubscribeIfOn();}
-// Avisa al Worker de que hoy ya hay actividad (para que no mande recordatorios). Máx. una vez al día.
+// ¿Se ha hecho la rehab hoy? (XP de rehab, mínimo de rehab, o alguna serie marcada)
+function rehabDoneToday(){
+  ensureUnifiedState();
+  if((state.rehabXpToday||0)>0)return true;
+  const m=state.dailyMinimums?.[td()]?.rehab;
+  if(m&&['minimum','complete'].includes(m.status))return true;
+  if(Object.values(state.legs||{}).some(a=>Array.isArray(a)&&a.some(Boolean)))return true;
+  return false;
+}
+// Avisa al Worker de que hoy YA se hizo la rehab (para no recordarla). Máx. una vez al día.
 let _donePingedDate=null;
 function markDoneToday(){
   try{
     if(!state.profile?.reminderEnabled)return;
+    if(!rehabDoneToday())return;          // solo cuando la rehab está hecha
     const today=td();
     if(_donePingedDate===today)return;
     const url=pushWorkerUrl();if(!url)return;
@@ -722,6 +732,7 @@ async function subscribeToPush(){
       evening:state.profile?.reminderEvening||'20:00',
       tzOffset:new Date().getTimezoneOffset()
     })});
+    _donePingedDate=null; markDoneToday(); // re-sincroniza el estado de "rehab hecha"
     return res.ok;
   }catch(e){console.warn('[MAXER] Error suscribiendo push:',e);alert('No se pudo activar el aviso: '+e.message);return false;}
 }
@@ -1077,7 +1088,7 @@ function saveState(){
   }else if(localOk){
     setSyncStatus('saved','Guardado',true);
   }
-  if(isNonZeroDay()) markDoneToday(); // avisa al Worker: hoy ya hay actividad
+  markDoneToday(); // avisa al Worker si la rehab de hoy ya está hecha
 }
 function fsWrite(data){
   if(!currentUser)return;

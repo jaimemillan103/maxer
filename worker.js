@@ -33,12 +33,11 @@ export default {
         if (!id || !subscription) return jsonRes({ error: 'faltan datos' }, 400);
         const [rh1, rm1] = String(morning || '10:00').split(':').map(Number);
         const [rh2, rm2] = String(evening || '20:00').split(':').map(Number);
-        const prev = JSON.parse((await env.MAXER_PUSH.get(id)) || '{}');
         await env.MAXER_PUSH.put(id, JSON.stringify({
           subscription,
           rh1: rh1 || 10, rm1: rm1 || 0, rh2: rh2 || 20, rm2: rm2 || 0,
           tzOffset: tzOffset || 0,
-          doneDate: prev.doneDate || null, lastSent1: null, lastSent2: null,
+          doneDate: null, lastSent1: null, lastSent2: null, // se limpia al (re)suscribir; el cliente marca "hecho" si toca
         }));
         return jsonRes({ ok: true });
       } catch (e) {
@@ -145,7 +144,7 @@ export default {
         // Aviso de mañana
         const m1 = (rec.rh1 ?? rec.rh ?? 10) * 60 + (rec.rm1 ?? rec.rm ?? 0);
         if (nmod - m1 >= 0 && nmod - m1 < WIN && rec.lastSent1 !== localDate) {
-          if (await send('☀️ Buenos días. Aún no has hecho tu día — ¿empezamos? 💪')) {
+          if (await send('☀️ Buenos días. Aún no has hecho tu rehab hoy 🦵 ¿La sacamos?')) {
             rec.lastSent1 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
           }
           continue;
@@ -153,7 +152,7 @@ export default {
         // Aviso de tarde (última llamada)
         const m2 = (rec.rh2 ?? 20) * 60 + (rec.rm2 ?? 0);
         if (nmod - m2 >= 0 && nmod - m2 < WIN && rec.lastSent2 !== localDate) {
-          if (await send('⏳ Última llamada: haz aunque sea el mínimo y mantén la racha 🔥')) {
+          if (await send('⏳ Última llamada para tu rehab de hoy 🦵 Aunque sea el mínimo, mantén la racha 🔥')) {
             rec.lastSent2 = localDate; await env.MAXER_PUSH.put(k.name, JSON.stringify(rec));
           }
         }
