@@ -96,15 +96,23 @@ export default {
       const priv = env.VAPID_PRIVATE_KEY || '';
       let pubBytes = -1, pubErr = null;
       try { pubBytes = b64urlToBytes(pub).length; } catch (e) { pubErr = String(e); }
-      let kvBound = false, subsCount = -1, subKeys = [];
-      try { const l = await env.MAXER_PUSH.list(); kvBound = true; subsCount = l.keys.length; subKeys = l.keys.map(k => k.name); }
-      catch (e) { kvBound = false; }
+      let kvBound = false, subsCount = -1, recs = [];
+      try {
+        const l = await env.MAXER_PUSH.list(); kvBound = true; subsCount = l.keys.length;
+        for (const k of l.keys) {
+          const r = JSON.parse((await env.MAXER_PUSH.get(k.name)) || '{}');
+          recs.push({ id: k.name, rh1: r.rh1, rm1: r.rm1, rh2: r.rh2, rm2: r.rm2, tzOffset: r.tzOffset, doneDate: r.doneDate, lastSent1: r.lastSent1, lastSent2: r.lastSent2, hasSub: !!r.subscription });
+        }
+      } catch (e) { kvBound = false; }
+      // Hora local calculada para el primer registro (para comparar con tu reloj)
+      let serverNowUTC = new Date().toISOString();
+      let localNow = recs.length ? new Date(Date.now() - (recs[0].tzOffset || 0) * 60000).toISOString() : null;
       return jsonRes({
         pubLen: pub.length, pubBytes, pubErr,
         privLen: priv.length,
         subject: env.VAPID_SUBJECT || null,
         hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
-        kvBound, subsCount, subKeys,
+        kvBound, subsCount, recs, serverNowUTC, localNow,
       });
     }
 
