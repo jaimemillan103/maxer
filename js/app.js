@@ -1160,8 +1160,8 @@ function processLoad(){
   getPinHash().then(h=>{if(h&&!pinUnlocked)showPinScreen('unlock')});
 }
 
-// Día de rehab = al menos una serie de rehab hecha (antes solo contaba si se completaban todas).
-function rehabHechaHoy(){return (state.rehabXpToday||0)>0||Object.values(state.legs||{}).some(a=>Array.isArray(a)&&a.some(Boolean))}
+// Día de rehab = rehab COMPLETA (todas las series del día): así lo quiere Jaime.
+function rehabHechaHoy(){return (state.rehabXpToday||0)>0}
 function archiveDay(dayKey){
   if(!dayKey)return;
   if(!state.history)state.history={};
