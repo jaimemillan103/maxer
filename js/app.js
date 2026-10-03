@@ -836,7 +836,7 @@ function rStats(){
   for(let i=0;i<firstDow;i++)cells+=`<div class="cal-cell empty"></div>`;
   for(let d=1;d<=dim;d++){
     const key=`${my}-${String(mm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const done=(hist[key]?.rehabDone)||(key===td()&&(state.rehabXpToday||0)>0);
+    const done=(hist[key]?.rehabDone)||(key===td()&&rehabHechaHoy());
     const isToday=key===td();
     const future=new Date(my,mm,d)>todayMid;
     cells+=`<div class="cal-cell${done?' done':''}${isToday?' today':''}"${future?' style="opacity:.3"':''}>${d}</div>`;
@@ -1160,31 +1160,15 @@ function processLoad(){
   getPinHash().then(h=>{if(h&&!pinUnlocked)showPinScreen('unlock')});
 }
 
+// Día de rehab = al menos una serie de rehab hecha (antes solo contaba si se completaban todas).
+function rehabHechaHoy(){return (state.rehabXpToday||0)>0||Object.values(state.legs||{}).some(a=>Array.isArray(a)&&a.some(Boolean))}
 function archiveDay(dayKey){
   if(!dayKey)return;
   if(!state.history)state.history={};
   const active=isNonZeroDay(dayKey)||tPush()>0||Object.values(state.legs||{}).some(a=>a.some(Boolean))||Object.values(state.general||{}).some(a=>a.some(Boolean));
-  state.history[dayKey]={xp:state.xpToday||0,pushups:tPush(),rehabDone:(state.rehabXpToday||0)>0,nonZero:active};
+  state.history[dayKey]={xp:state.xpToday||0,pushups:tPush(),rehabDone:rehabHechaHoy(),nonZero:active};
   state.nonZeroHistory[dayKey]=active;
   // Antes se borraban los días de más de 90: ahora el resumen se guarda siempre (son ~100 bytes por día).
-  archiveDayDetail(dayKey,active);
-}
-// Detalle completo del día (series, hábitos, mínimos, medición) en users/{uid}/historial/{fecha}:
-// un documento por día que no se recorta nunca. Antes el detalle se perdía al empezar el día siguiente.
-function archiveDayDetail(dayKey,active){
-  if(!currentUser||!dayKey)return;
-  try{
-    const det=JSON.parse(JSON.stringify({
-      fecha:dayKey,xp:state.xpToday||0,activo:!!active,
-      pushups:state.pushups||{},legs:state.legs||{},general:state.general||{},
-      habits:state.habits||{},rehabXp:state.rehabXpToday||0,
-      minimos:(state.dailyMinimums||{})[dayKey]||null,
-      medicion:(state.recomp?.entries||{})[dayKey]||null,
-      guardado:new Date().toISOString()
-    }));
-    db.collection('users').doc(currentUser.uid).collection('historial').doc(dayKey).set(det,{merge:true})
-      .catch(e=>console.warn('[MAXER] No se pudo archivar el día.',e));
-  }catch(e){console.warn('[MAXER] Error preparando el archivo del día.',e)}
 }
 function startNewDay(){
   ensureUnifiedState();
@@ -1590,40 +1574,7 @@ function rProgress(){
   return `<div class="sec-head"><div class="sec-title">Progreso</div><div class="sec-sub">Constancia, composición y estadísticas.</div></div>`+
   `<div class="summary-row"><div class="sum-card"><div class="sum-val">${nonZeroStreak()}</div><div class="sum-lbl">No-cero</div></div><div class="sum-card"><div class="sum-val">${minsToday}</div><div class="sum-lbl">Mínimos hoy</div></div><div class="sum-card"><div class="sum-val">${prs}</div><div class="sum-lbl">PRs</div></div></div>`+
   rRecompCard()+
-  rStats()+
-  rHistorial();
-}
-// ══ HISTORIAL COMPLETO ═════════════════════════════════════
-// Todos los días guardados (antes solo se veía la semana actual). Al abrir un día se carga su detalle
-// de users/{uid}/historial/{fecha}; los días anteriores al 3/10/2026 solo tienen el resumen.
-function rHistorial(){
-  const h=state.history||{},keys=Object.keys(h).sort().reverse();
-  if(!keys.length)return '';
-  const activos=keys.filter(k=>h[k].nonZero).length;
-  return `<div class="settings-card" style="margin-top:14px"><div class="settings-card-title">Historial · ${keys.length} días, ${activos} activos</div>`+
-    keys.map(k=>`<details style="border-top:1px solid var(--border,#2a2a2a);padding:9px 2px" ontoggle="if(this.open)loadDayDetail('${k}',this)">`+
-      `<summary style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;list-style:none"><span>${h[k].nonZero?'✅':'▫️'} ${fmtHistDay(k)}</span><span style="color:var(--muted)">${h[k].xp||0} XP</span></summary>`+
-      `<div class="hist-det" style="font-size:13px;color:var(--muted);padding:8px 2px 2px">Cargando…</div></details>`).join('')+`</div>`;
-}
-function fmtHistDay(k){try{return new Date(k+'T12:00:00').toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}catch(e){return k}}
-async function loadDayDetail(k,el){
-  const box=el.querySelector('.hist-det');if(!box||box.dataset.loaded)return;
-  if(!currentUser){box.textContent='Inicia sesión para ver el detalle.';return}
-  try{
-    const doc=await db.collection('users').doc(currentUser.uid).collection('historial').doc(k).get();
-    box.dataset.loaded='1';
-    if(!doc.exists){const r=state.history[k]||{};box.textContent=`Solo hay resumen de este día: ${r.xp||0} XP${r.pushups?', '+r.pushups+' flexiones':''}${r.rehabDone?', rehab hecha':''}. El detalle se guarda desde el 3 de octubre de 2026.`;return}
-    const d=doc.data(),lin=[];
-    const series=(o)=>Object.entries(o||{}).map(([id,arr])=>[id,(Array.isArray(arr)?arr:[]).filter(Boolean).length]).filter(([,n])=>n>0);
-    for(const [id,n] of [...series(d.general),...series(d.legs)])lin.push(`${esc(id.replace(/[_-]/g,' '))}: ${n} serie${n>1?'s':''}`);
-    const flex=Object.values(d.pushups||{}).flat().filter(x=>x&&x.done).reduce((a,x)=>a+(x.reps||0),0);
-    if(flex)lin.push(`Flexiones: ${flex}`);
-    const hab=Object.entries(d.habits||{}).filter(([,v])=>v).map(([k])=>k);
-    if(hab.length)lin.push(`Hábitos: ${esc(hab.join(', '))}`);
-    if(d.rehabXp)lin.push(`Rehab: ${d.rehabXp} XP`);
-    if(d.medicion)lin.push(`Medición: ${d.medicion.weight?d.medicion.weight+' kg':''}${d.medicion.bf?' · '+d.medicion.bf+' % grasa':''}`);
-    box.innerHTML=lin.length?lin.map(l=>`<div>${l}</div>`).join(''):'Día sin actividad registrada.';
-  }catch(e){box.textContent='No se pudo cargar el detalle (sin conexión).'}
+  rStats();
 }
 function getStateSizeWarningHtml(){
   const bytes=lastStateSizeBytes||estimateStateBytes(state);
