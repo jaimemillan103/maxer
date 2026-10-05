@@ -704,7 +704,7 @@ function syncPushStatus(){
     const key=JSON.stringify(payload);
     if(key===_lastPushPayload)return;
     _lastPushPayload=key;
-    fetch(url+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).catch(()=>{_lastPushPayload=null});
+    tokenWorker().then(idToken=>fetch(url+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,idToken})})).catch(()=>{_lastPushPayload=null});
   }catch(e){}
 }
 
@@ -717,6 +717,9 @@ function urlBase64ToUint8Array(base64){
   for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
   return arr;
 }
+// El Worker comprueba con este token quién eres (antes se fiaba del id que mandaba la app)
+async function tokenWorker(){try{return currentUser?await currentUser.getIdToken():null}catch(e){return null}}
+const zonaHoraria=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||null}catch(e){return null}})();
 function pushWorkerUrl(){return (localStorage.getItem('maxer_worker_url')||'').trim().replace(/\/+$/,'');}
 function getPushId(){
   if(currentUser?.uid)return 'u_'+currentUser.uid;
@@ -735,7 +738,7 @@ async function subscribeToPush(){
     let sub=await reg.pushManager.getSubscription();
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
     const res=await fetch(url+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      id:getPushId(),subscription:sub.toJSON(),
+      id:getPushId(),subscription:sub.toJSON(),idToken:await tokenWorker(),timeZone:zonaHoraria,
       morning:state.profile?.reminderMorning||state.profile?.reminderTime||'10:00',
       evening:state.profile?.reminderEvening||'20:00',
       tzOffset:new Date().getTimezoneOffset()
@@ -752,7 +755,7 @@ async function unsubscribeFromPush(){
       const sub=await reg.pushManager.getSubscription();
       if(sub)await sub.unsubscribe();
     }
-    if(url)await fetch(url+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})}).catch(()=>{});
+    if(url)await fetch(url+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId(),idToken:await tokenWorker()})}).catch(()=>{});
   }catch(e){console.warn('[MAXER] Error dando de baja push:',e)}
 }
 async function sendTestPush(){
@@ -760,7 +763,7 @@ async function sendTestPush(){
   if(!url){alert('Configura la URL del Worker primero.');return;}
   if(!state.profile?.reminderEnabled){alert('Activa primero las notificaciones.');return;}
   try{
-    const res=await fetch(url+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId()})});
+    const res=await fetch(url+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:getPushId(),idToken:await tokenWorker()})});
     const d=await res.json().catch(()=>({}));
     alert(res.ok?('Enviado (estado '+(d.status||'?')+'). Debería llegarte en unos segundos.'):('Error: '+(d.error||res.status)));
   }catch(e){alert('Error enviando la prueba: '+e.message)}
@@ -1259,6 +1262,19 @@ async function showApp(){
   const _ma=document.getElementById('mainApp');if(_ma)_ma.style.display='block';
   checkDailyReminder();startJournalNotifLoop();renderAll();
   if((await getPinHash())&&!pinUnlocked)showPinScreen('unlock');
+  pedirConsentimiento();
+}
+// RGPD art. 9: los datos de salud solo se guardan con consentimiento explícito (una vez por cuenta y versión)
+const VERSION_PRIVACIDAD='2026-10';
+function pedirConsentimiento(){
+  if(!currentUser||(state.profile&&state.profile.consentSalud&&state.profile.consentSalud.version===VERSION_PRIVACIDAD))return;
+  if(document.getElementById('consentModal'))return;
+  const m=document.createElement('div');m.id='consentModal';m.className='modal-overlay';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+  m.innerHTML=`<div class="modal"><h3>🔒 Tus datos de salud</h3><p style="text-align:left">Maxer guarda tu rehabilitación, tu peso, tus medidas y tu diario para seguir tu progreso y sincronizarlo entre tus dispositivos. Son datos de salud: solo los guardamos si estás de acuerdo. Puedes retirarlo cuando quieras borrando tu cuenta en Ajustes.<br><br><a href="./privacidad.html" target="_blank" rel="noopener">Leer la política de privacidad</a></p>
+    <div class="modal-btns"><button class="modal-btn secondary" id="consentNo">No acepto</button><button class="modal-btn primary" id="consentSi">Acepto</button></div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#consentSi').onclick=()=>{state.profile.consentSalud={version:VERSION_PRIVACIDAD,fecha:new Date().toISOString()};saveState();m.remove()};
+  m.querySelector('#consentNo').onclick=()=>{m.remove();alert('Sin tu consentimiento Maxer no puede guardar datos de salud. Se cerrará la sesión; puedes volver cuando quieras.');doLogout()};
 }
 async function doLogout(){
   closeModal('logoutModal');flushSave();if(journalNotifTimer){clearInterval(journalNotifTimer);journalNotifTimer=null}
@@ -1360,7 +1376,7 @@ function toggleHabit(id){
   state.habits[id]=!state.habits[id];
   if(state.habits[id]){awardXP(3,'Habito');if(HABIT_TO_MINIMUM[id])getMinimum(HABIT_TO_MINIMUM[id]).status='minimum'}
   else{deductXP(3,false);if(HABIT_TO_MINIMUM[id]&&getMinimum(HABIT_TO_MINIMUM[id]).status==='minimum')getMinimum(HABIT_TO_MINIMUM[id]).status='pending'}
-  if(HABITS.every(h2=>!!state.habits[h2.id])&&!state.habitXpToday){state.habitXpToday=true;awardXP(25,'Todos los hábitos')}
+  if(HABITS.filter(h2=>state.habitSettings?.[h2.id]!==false).every(h2=>!!state.habits[h2.id])&&!state.habitXpToday){state.habitXpToday=true;awardXP(25,'Todos los hábitos')}
   saveState();renderHabits();checkAch();render();
 }
 function togPS(tid,i){
@@ -1659,6 +1675,9 @@ function rSettings(){
     <div class="settings-card"><div class="settings-card-title">Personalizar</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Hábitos y mínimos</div><div class="settings-help">Activa o desactiva qué hábitos y mínimos diarios ves cada día.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="openHabitsEditor()">Editar</button></div>
     </div>
+    <div class="settings-card"><div class="settings-card-title">Privacidad</div>
+      <div class="settings-row"><div class="settings-meta"><div class="settings-label">Tus datos</div><div class="settings-help">Qué se guarda, quién lo trata y cómo borrarlo.</div></div><a class="settings-action" style="white-space:nowrap;flex-shrink:0;text-decoration:none" href="./privacidad.html" target="_blank" rel="noopener">Ver</a></div>
+    </div>
     ${getStateSizeWarningHtml()}
     <div class="settings-card"><div class="settings-card-title">Aplicación</div>
       <div class="settings-row"><div class="settings-meta"><div class="settings-label">Buscar actualizaciones</div><div class="settings-help">Limpia la caché y recarga con la última versión. Útil tras una actualización.</div></div><button class="settings-action" style="white-space:nowrap;flex-shrink:0" onclick="forceUpdate(this)">Actualizar</button></div>
@@ -1822,6 +1841,11 @@ if ('serviceWorker' in navigator) {
 // ══ AI CHAT ═══════════════════════════════════════════════
 let aiMessages=[];
 function openAIChat(){
+  // El asistente manda un resumen de tus datos (rehab, peso, grasa) a Anthropic: se avisa la primera vez
+  if(!(state.profile&&state.profile.consentIA)){
+    if(!confirm('El asistente de IA envía tu pregunta y un resumen de tu rehab, peso y progreso a Anthropic (EE. UU.) para responderte. ¿Quieres usarlo?'))return;
+    state.profile.consentIA=new Date().toISOString();saveState();
+  }
   document.getElementById('aiOverlay').classList.remove('hidden');
   renderAIMessages();
   setTimeout(()=>document.getElementById('aiInput')?.focus(),200);
@@ -1880,7 +1904,7 @@ async function sendAIMsg(){
     const res=await fetch(workerUrl,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({context:buildAIContext(),messages:aiMessages.filter(m=>m.role!=='system')})
+      body:JSON.stringify({context:buildAIContext(),messages:aiMessages.filter(m=>m.role!=='system').slice(-20),idToken:await tokenWorker()})
     });
     const data=await res.json();
     const reply=data.content||data.reply||data.text||'Sin respuesta del asistente.';

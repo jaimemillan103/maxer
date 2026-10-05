@@ -7,15 +7,20 @@
 //       VAPID_PRIVATE_KEY  (Secret)  — clave VAPID privada
 //       VAPID_SUBJECT      (Text)    — p.ej. mailto:jaimemillan103@gmail.com
 //   • KV namespace vinculado con el nombre de binding:  MAXER_PUSH
-//   • Cron Trigger:  */15 * * * *   (cada 15 min)
+//   • Cron Trigger:  */15 * * * *   (cada 15 min; la ventana WIN de abajo es de 15 para no perder ninguna hora)
+// Seguridad (oct 2026): cada petición lleva el ID token de Firebase del usuario (campo idToken del cuerpo); el Worker
+// lo verifica con las claves públicas de Google y solo actúa sobre la suscripción de ESE usuario. Sin /debug.
 // ─────────────────────────────────────────────────────────────
 
 export default {
   // ───────── Peticiones HTTP (chat IA + alta/baja de push) ─────────
   async fetch(request, env) {
-    const origin = request.headers.get('Origin') || '*';
+    // CORS solo para la propia app (Cloudflare Pages / dominio de Maxer / pruebas en local)
+    const origin = request.headers.get('Origin') || '';
+    let host = ''; try { host = new URL(origin).hostname; } catch (e) {}
+    const permitido = /\.pages\.dev$/.test(host) || /maxer/i.test(host) || host === 'localhost';
     const cors = {
-      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Origin': permitido ? origin : 'null',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
@@ -25,19 +30,25 @@ export default {
     const url = new URL(request.url);
     const jsonRes = (obj, status = 200) =>
       new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    let body = {};
+    try { const txt = await request.text(); if (txt.length > 200000) return jsonRes({ error: 'demasiado grande' }, 413); body = txt ? JSON.parse(txt) : {}; }
+    catch (e) { return jsonRes({ error: 'JSON no válido' }, 400); }
+    const uid = await verificarToken(body.idToken);
+    if (!uid) return jsonRes({ error: 'Inicia sesión en Maxer para usar esto.' }, 401);
+    const miId = 'u_' + uid;   // la suscripción de cada usuario es la de su cuenta, no la que diga el cuerpo
 
     // ── Alta de suscripción push ──
     if (url.pathname === '/subscribe') {
       try {
-        const { id, subscription, morning, evening, tzOffset } = await request.json();
-        if (!id || !subscription) return jsonRes({ error: 'faltan datos' }, 400);
+        const { subscription, morning, evening, tzOffset, timeZone } = body; const id = miId;
+        if (!subscription || !subscription.endpoint) return jsonRes({ error: 'faltan datos' }, 400);
         const [rh1, rm1] = String(morning || '10:00').split(':').map(Number);
         const [rh2, rm2] = String(evening || '20:00').split(':').map(Number);
         const prev = JSON.parse((await env.MAXER_PUSH.get(id)) || '{}');
         await env.MAXER_PUSH.put(id, JSON.stringify({
           subscription,
           rh1: rh1 || 10, rm1: rm1 || 0, rh2: rh2 || 20, rm2: rm2 || 0,
-          tzOffset: tzOffset || 0,
+          tzOffset: tzOffset || 0, timeZone: typeof timeZone === 'string' ? timeZone.slice(0, 60) : null,
           snapshot: prev.snapshot || null, lastSent1: null, lastSent2: null,
         }));
         return jsonRes({ ok: true });
@@ -49,11 +60,11 @@ export default {
     // ── El cliente sincroniza qué mínimos faltan hoy (para los avisos) ──
     if (url.pathname === '/status' || url.pathname === '/active') {
       try {
-        const { id, date, pending, active } = await request.json();
+        const { date, pending, active } = body; const id = miId;
         const raw = await env.MAXER_PUSH.get(id);
         if (raw) {
           const rec = JSON.parse(raw);
-          rec.snapshot = { date: date || null, pending: pending || [], active: active || [] };
+          rec.snapshot = { date: date || null, pending: (pending || []).slice(0, 20).map(String), active: (active || []).slice(0, 20).map(String) };
           await env.MAXER_PUSH.put(id, JSON.stringify(rec));
         }
         return jsonRes({ ok: true });
@@ -65,8 +76,7 @@ export default {
     // ── Baja de suscripción push ──
     if (url.pathname === '/unsubscribe') {
       try {
-        const { id } = await request.json();
-        if (id) await env.MAXER_PUSH.delete(id);
+        await env.MAXER_PUSH.delete(miId);
         return jsonRes({ ok: true });
       } catch (e) {
         return jsonRes({ error: String(e) }, 400);
@@ -76,9 +86,8 @@ export default {
     // ── Envío de prueba inmediato (para verificar sin esperar al cron) ──
     if (url.pathname === '/test') {
       try {
-        const { id } = await request.json();
-        const raw = await env.MAXER_PUSH.get(id);
-        if (!raw) return jsonRes({ error: 'no hay suscripción para ese id' }, 404);
+        const raw = await env.MAXER_PUSH.get(miId);
+        if (!raw) return jsonRes({ error: 'no hay suscripción para este usuario' }, 404);
         const rec = JSON.parse(raw);
         const status = await sendWebPush(rec.subscription,
           JSON.stringify({ title: 'MAXER', body: '✅ Notificación de prueba. ¡Funciona!', url: '/' }),
@@ -89,49 +98,21 @@ export default {
       }
     }
 
-    // ── Diagnóstico (para depurar la config) ──
-    if (url.pathname === '/debug') {
-      const pub = env.VAPID_PUBLIC_KEY || '';
-      const priv = env.VAPID_PRIVATE_KEY || '';
-      let pubBytes = -1, pubErr = null;
-      try { pubBytes = b64urlToBytes(pub).length; } catch (e) { pubErr = String(e); }
-      let kvBound = false, subsCount = -1, recs = [];
-      try {
-        const l = await env.MAXER_PUSH.list(); kvBound = true; subsCount = l.keys.length;
-        for (const k of l.keys) {
-          const r = JSON.parse((await env.MAXER_PUSH.get(k.name)) || '{}');
-          recs.push({ id: k.name, rh1: r.rh1, rm1: r.rm1, rh2: r.rh2, rm2: r.rm2, tzOffset: r.tzOffset, snapshot: r.snapshot, lastSent1: r.lastSent1, lastSent2: r.lastSent2, hasSub: !!r.subscription });
-        }
-      } catch (e) { kvBound = false; }
-      // Hora local calculada para el primer registro (para comparar con tu reloj)
-      let serverNowUTC = new Date().toISOString();
-      let localNow = recs.length ? new Date(Date.now() - (recs[0].tzOffset || 0) * 60000).toISOString() : null;
-      return jsonRes({
-        pubLen: pub.length, pubBytes, pubErr,
-        privLen: priv.length,
-        subject: env.VAPID_SUBJECT || null,
-        hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
-        kvBound, subsCount, recs, serverNowUTC, localNow,
-      });
-    }
-
     // ── Chat IA (comportamiento original en la raíz) ──
-    return handleAI(request, env, cors);
+    return handleAI(body, env, cors);
   },
 
   // ───────── Cron: recorre las suscripciones y envía a su hora ─────────
   async scheduled(event, env, ctx) {
     const now = Date.now();
-    const WIN = 10; // ventana en minutos (el cron corre cada 5)
+    const WIN = 15; // ventana en minutos = intervalo del cron (*/15): así ninguna hora se queda sin aviso
     const list = await env.MAXER_PUSH.list();
     for (const k of list.keys) {
       try {
         const raw = await env.MAXER_PUSH.get(k.name);
         if (!raw) continue;
         const rec = JSON.parse(raw);
-        const local = new Date(now - (rec.tzOffset || 0) * 60000);
-        const nmod = local.getUTCHours() * 60 + local.getUTCMinutes();
-        const localDate = local.toISOString().slice(0, 10);
+        const { nmod, localDate } = horaLocal(now, rec);   // con la zona horaria real: el cambio de hora ya no adelanta los avisos
 
         // ¿Qué mínimos faltan hoy? Usa el snapshot del cliente; si es de otro día, asume todos los activos.
         const snap = rec.snapshot || {};
@@ -169,9 +150,11 @@ export default {
 };
 
 // ═══════════════ Chat IA ═══════════════
-async function handleAI(request, env, cors) {
+async function handleAI(body, env, cors) {
   try {
-    const { context, messages } = await request.json();
+    const context = String(body.context || '').slice(0, 8000);
+    const messages = (Array.isArray(body.messages) ? body.messages : []).slice(-20)
+      .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 4000) }));
     const systemPrompt = `Eres el asistente personal de fitness de MAXER, una app de entrenamiento, rehabilitación y hábitos.
 Hablas en español. Eres conciso, práctico y motivador. Nunca escribas más de 250 palabras por respuesta.
 Cuando des recomendaciones de entrenamiento incluye series y repeticiones concretas.
@@ -290,4 +273,43 @@ async function sendWebPush(subscription, payload, vapidPub, vapidPriv, subject) 
     body,
   });
   return res.status; // 201 = enviado; 404/410 = suscripción caducada
+}
+
+// ═══════════════ Hora local del usuario ═══════════════
+function horaLocal(now, rec) {
+  if (rec.timeZone) {
+    try {
+      const f = new Intl.DateTimeFormat('en-GB', { timeZone: rec.timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      const p = Object.fromEntries(f.formatToParts(new Date(now)).map(x => [x.type, x.value]));
+      return { nmod: (Number(p.hour) % 24) * 60 + Number(p.minute), localDate: `${p.year}-${p.month}-${p.day}` };
+    } catch (e) {}
+  }
+  const local = new Date(now - (rec.tzOffset || 0) * 60000);
+  return { nmod: local.getUTCHours() * 60 + local.getUTCMinutes(), localDate: local.toISOString().slice(0, 10) };
+}
+
+// ═══════════════ Verificación del ID token de Firebase (sin librerías) ═══════════════
+const PROYECTO = 'focus-to-do-millan';
+let jwkCache = { claves: null, hasta: 0 };
+async function clavesGoogle() {
+  if (jwkCache.claves && Date.now() < jwkCache.hasta) return jwkCache.claves;
+  const r = await fetch('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com');
+  const j = await r.json();
+  const edad = Number((r.headers.get('cache-control') || '').match(/max-age=(\d+)/)?.[1] || 3600);
+  jwkCache = { claves: j.keys || [], hasta: Date.now() + edad * 1000 };
+  return jwkCache.claves;
+}
+const b64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function verificarToken(token) {
+  try {
+    if (typeof token !== 'string' || token.split('.').length !== 3) return null;
+    const [h, p, firma] = token.split('.');
+    const cab = JSON.parse(new TextDecoder().decode(b64u(h))), dat = JSON.parse(new TextDecoder().decode(b64u(p)));
+    const ahora = Math.floor(Date.now() / 1000);
+    if (cab.alg !== 'RS256' || dat.aud !== PROYECTO || dat.iss !== 'https://securetoken.google.com/' + PROYECTO || !dat.sub || dat.exp < ahora || dat.iat > ahora + 300) return null;
+    const jwk = (await clavesGoogle()).find(k => k.kid === cab.kid); if (!jwk) return null;
+    const clave = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', clave, b64u(firma), new TextEncoder().encode(h + '.' + p));
+    return ok ? dat.sub : null;
+  } catch (e) { return null; }
 }
