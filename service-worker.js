@@ -1,4 +1,4 @@
-const CACHE_NAME = 'maxer-v17';
+const CACHE_NAME = 'maxer-v18';
 const APP_SHELL = [
   '/index.html',
   '/css/styles.css',
@@ -59,13 +59,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Otros orígenes (Firestore, Google APIs…) → a la red sin tocar la caché (podían quedar guardados datos del usuario)
+  const host = new URL(request.url).hostname;
+  if (new URL(request.url).origin !== self.location.origin && !/(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|www\.gstatic\.com)$/.test(host)) return;
   // Resto (iconos, fuentes, manifest) → caché-primero (rara vez cambian)
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        if (response && response.ok) { const copy = response.clone(); caches.open(CACHE_NAME).then(cache => cache.put(request, copy)); }
         return response;
       });
     })

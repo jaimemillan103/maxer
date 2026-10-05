@@ -184,7 +184,10 @@ const DS=()=>({
 });
 let state=DS();
 function td(){const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`} // fecha LOCAL (antes UTC: el día cambiaba a las 02:00)
-function ws(){const d=new Date(),day=d.getDay(),diff=d.getDate()-(day===0?6:day-1);return new Date(new Date().setDate(diff)).toISOString().slice(0,10)}
+function localKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function ws(){const d=new Date(),day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));return localKey(d)}   // lunes de esta semana, en hora local
+// La nube solo se escribe cuando ya se ha leído (si no, un móvil con datos viejos o vacíos pisaría lo de otro dispositivo)
+let cloudLoaded=false;
 function dBetween(a,b){return Math.round((new Date(b)-new Date(a))/864e5)}
 function tPush(s){return Object.values(((s||state).pushups)||{}).flat().reduce((n,x)=>n+(x.reps||0),0)}
 
@@ -223,7 +226,8 @@ auth.onAuthStateChanged(async u=>{
   currentUser = u;
 
   if(appLoaded){
-    // Token refresh o re-auth posterior — NO recargar datos
+    // Token refresh: no se recarga nada. Pero si la app arrancó con lo del móvil porque Auth tardó, ahora se lee la nube.
+    if(u && !cloudLoaded){ await loadFS(); listenLive(); renderAll(); }
     return;
   }
   appLoaded = true;
@@ -461,7 +465,8 @@ function startNewDay(){
   state.pushups={};state.legs={};state.general={};
   state.habits={cold:false,walk:false,reading:false,breathing:false,protein:false,deficit:false,agua:false,sueño:false};
   state.habitXpToday=false;state.pushXpAwarded=0;state.rehabXpToday=0;state._decayMsg=null;state.xpToday=0;if(state.recomp)state.recomp.xpToday=false;
-  state.date=td();state.streak=(state.streak||0)+1;
+  const ayerActivo=!!(state.history&&state.history[y]&&state.history[y].nonZero);
+  state.date=td();state.streak=ayerActivo?(state.streak||0)+1:0;
 }
 function confirmNewDay(){closeModal('newDayModal');startNewDay();saveState();renderAll()}
 function confirmReset(){confirmNewDay()}
@@ -796,7 +801,7 @@ function rStats(){
   const days=[];
   for(let i=0;i<7;i++){
     const d=new Date(monday);d.setDate(monday.getDate()+i);
-    const key=d.toISOString().slice(0,10);
+    const key=localKey(d);
     const isToday=key===td();
     const entry=hist[key]||null;
     days.push({key,label:WD[i],isToday,xp:isToday?(state.xpToday||0):(entry?.xp||0)});
@@ -849,7 +854,7 @@ function rStats(){
   const totalXP=state.xp||0;
 
   return `
-<div class="sec-head"><div class="sec-title">📊 Progreso${name?' · '+name:''}</div><div class="sec-sub">Tu constancia semana a semana</div></div>
+<div class="sec-head"><div class="sec-title">📊 Progreso${name?' · '+esc(name):''}</div><div class="sec-sub">Tu constancia semana a semana</div></div>
 
 <div class="summary-row">
   <div class="sum-card"><div class="sum-val">${totalXP}</div><div class="sum-lbl">XP Total</div></div>
@@ -1046,8 +1051,15 @@ async function loadFS(){
     const [doc,journalDoc]=await Promise.all([stateDocRef.get(),journalRef.get()]);
     const mainData=doc.exists?doc.data():null;
     const legacyEntries=mainData?.journal?.entries&&typeof mainData.journal.entries==='object'?mainData.journal.entries:{};
-    if(doc.exists) state=sanitize({...DS(),...mainData});
-    else loadLocal(false);
+    let local=null;try{local=JSON.parse(localStorage.getItem('maxer_v1')||'null')}catch(e){}
+    const localMio=!!(local&&local.owner===currentUser.uid);
+    subirLocal=false;
+    if(doc.exists){
+      if(localMio&&(local.updatedAt||0)>(mainData.updatedAt||0)){state=sanitize({...DS(),...local});subirLocal=true}   // p. ej. lo marcado sin cobertura
+      else state=sanitize({...DS(),...mainData});
+    }
+    else if(local&&(!local.owner||localMio))loadLocal(false);   // cuenta nueva: se queda con lo hecho como invitado
+    else{state=DS();ensureUnifiedState()}                        // nunca heredar datos de otra cuenta en este móvil
     ensureUnifiedState();
     const cloudJournalData=journalDoc.exists?journalDoc.data():null;
     const cloudEntries=cloudJournalData?.entries&&typeof cloudJournalData.entries==='object'?cloudJournalData.entries:{};
@@ -1057,20 +1069,24 @@ async function loadFS(){
       await writeJournalEntries(state.journal.entries);
       await stateDocRef.set(cloudStatePayload(state));
     }
+    cloudLoaded=true;
   }catch(e){
     console.warn('[MAXER] No se pudo cargar Firestore; usando localStorage.',e);
     setSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?'Error nube':'Sin conexión');
     loadLocal(false);
   }
   processLoad();
+  if(subirLocal&&cloudLoaded)saveState();
 }
+let subirLocal=false;
 function loadLocal(runProcess=true){
   try{const r=localStorage.getItem('maxer_v1');if(r)state=sanitize({...DS(),...JSON.parse(r)});else{state=DS();ensureUnifiedState();migrateLegacyData()}}catch(e){console.warn('[MAXER] No se pudo leer localStorage; arrancando estado limpio.',e);state=DS();ensureUnifiedState();migrateLegacyData()}
   if(runProcess)processLoad();
 }
 function saveState(){
   ensureUnifiedState();
-  state.date=td();
+  if(!state.date)state.date=td();   // la fecha solo la cambia startNewDay (antes, un toque pasada la medianoche metía ayer en hoy)
+  state.updatedAt=Date.now(); if(currentUser)state.owner=currentUser.uid;
   const p=JSON.parse(JSON.stringify(state));
   let serialized='',localOk=false;
   try{
@@ -1082,12 +1098,13 @@ function saveState(){
     console.warn('[MAXER] Error guardando en localStorage.',e);
     setSyncStatus('error','Error local');
   }
-  if(currentUser){
+  if(currentUser&&!cloudLoaded){
+    setSyncStatus('saving','Esperando a la nube…');   // se sube en cuanto se lea la nube (gana lo más reciente)
+  }else if(currentUser){
     pendingCloudSave=p;
     clearTimeout(saveTimer);
-    if(!navigator.onLine){setSyncStatus('offline','Sin conexión');return}
-    setSyncStatus('saving','Guardando...');
-    saveTimer=setTimeout(()=>fsWrite(p),400);
+    setSyncStatus(navigator.onLine?'saving':'offline',navigator.onLine?'Guardando...':'Sin conexión · se subirá al volver');
+    saveTimer=setTimeout(()=>fsWrite(p),400);   // sin conexión, Firestore lo guarda en el móvil y lo sube al volver la red
   }else if(localOk){
     setSyncStatus('saved','Guardado',true);
   }
@@ -1101,13 +1118,20 @@ let liveUnsub=null,lastWrittenJson='';
 function listenLive(){
   if(!currentUser||liveUnsub)return;
   liveUnsub=db.collection('users').doc(currentUser.uid).collection('data').doc('state').onSnapshot(doc=>{
-    if(!doc.exists||doc.metadata.hasPendingWrites)return;   // eco de nuestro propio guardado
+    if(doc.metadata.hasPendingWrites)return;   // eco de nuestro propio guardado
+    if(!cloudLoaded){
+      cloudLoaded=true;
+      const remoto=doc.exists?doc.data():{};
+      if(state.owner===currentUser.uid&&(state.updatedAt||0)>(remoto.updatedAt||0)){fsWrite(JSON.parse(JSON.stringify(state)));return}
+    }
+    if(!doc.exists)return;
     if(pendingCloudSave)return;                                  // hay cambios nuestros sin subir: mandan ellos
     const data=doc.data();let json='';try{json=JSON.stringify(data)}catch(e){}
     if(json&&json===lastWrittenJson)return;                   // es lo último que escribimos nosotros
-    const entries=state.journal?.entries||{};
+    const entries=state.journal?.entries||{},tab=state.tab,jui=state.journalUi;
     state=sanitize({...DS(),...data});
     state.journal.entries=entries;                            // el diario va en su propio documento
+    if(tab)state.tab=tab;if(jui)state.journalUi=jui;          // un cambio de otro dispositivo no te saca de la pestaña
     try{localStorage.setItem('maxer_v1',JSON.stringify(state))}catch(e){}
     if(state.date&&state.date!==td()){processLoad()}
     renderAll();
@@ -1115,8 +1139,7 @@ function listenLive(){
   },e=>console.warn('[MAXER] Escucha en tiempo real cortada.',e));
 }
 function fsWrite(data){
-  if(!currentUser)return;
-  if(!navigator.onLine){pendingCloudSave=data;setSyncStatus('offline','Sin conexión');return}
+  if(!currentUser||!cloudLoaded)return;
   try{lastWrittenJson=JSON.stringify(cloudStatePayload(data))}catch(e){}
   setSyncStatus('saving','Guardando...');
   Promise.all([
@@ -1131,6 +1154,16 @@ function fsWrite(data){
     });
 }
 function flushSave(){clearTimeout(saveTimer);ensureUnifiedState();if(currentUser)fsWrite(pendingCloudSave||JSON.parse(JSON.stringify(state)))}
+let diaMantenido=null;
+function ensureToday(){
+  if(!state||!state.date||state.date===td()||state.date===diaMantenido)return;
+  processLoad();renderAll();
+}
+function mantenerDia(){diaMantenido=state.date;closeModal('newDayModal')}   // sigues en el día de ayer hasta que vuelvas a abrir la app
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')ensureToday();else if(currentUser&&pendingCloudSave)flushSave()});
+window.addEventListener('pageshow',ensureToday);
+window.addEventListener('focus',ensureToday);
+(function programarMedianoche(){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1,0,0,5);setTimeout(()=>{ensureToday();programarMedianoche()},m-n)})();
 
 function processLoad(){
   let before='';
@@ -1179,7 +1212,8 @@ function startNewDay(){
   state.pushups={};state.legs={};state.general={};
   state.habits={cold:false,walk:false,reading:false,breathing:false,protein:false,deficit:false,agua:false,sueño:false};
   state.habitXpToday=false;state.pushXpAwarded=0;state.rehabXpToday=0;state._decayMsg=null;state.xpToday=0;if(state.recomp)state.recomp.xpToday=false;
-  state.date=td();state.streak=(state.streak||0)+1;
+  const ayerActivo=!!(state.history&&state.history[y]&&state.history[y].nonZero);
+  state.date=td();state.streak=ayerActivo?(state.streak||0)+1:0;
 }
 function doFullReset(){
   closeModal('fullResetModal');
@@ -1227,7 +1261,11 @@ async function showApp(){
   if((await getPinHash())&&!pinUnlocked)showPinScreen('unlock');
 }
 async function doLogout(){
-  closeModal('logoutModal');flushSave();if(journalNotifTimer){clearInterval(journalNotifTimer);journalNotifTimer=null}await auth.signOut();appLoaded=false;pinUnlocked=false;state=DS();ensureUnifiedState();
+  closeModal('logoutModal');flushSave();if(journalNotifTimer){clearInterval(journalNotifTimer);journalNotifTimer=null}
+  if(liveUnsub){liveUnsub();liveUnsub=null}
+  await new Promise(r=>setTimeout(r,600));   // que salga el último guardado antes de cerrar la sesión
+  await auth.signOut();appLoaded=false;cloudLoaded=false;pinUnlocked=false;state=DS();ensureUnifiedState();
+  try{localStorage.removeItem('maxer_v1')}catch(e){}
   const _ma2=document.getElementById('mainApp');if(_ma2)_ma2.style.display='none';
   document.getElementById('loginScreen').classList.remove('hidden');
 }
@@ -1290,7 +1328,7 @@ function isNonZeroDay(date=td()){
   return !!state.nonZeroHistory?.[date];
 }
 function nonZeroStreak(){
-  let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(isNonZeroDay(k)){n++;d.setDate(d.getDate()-1)}else break}return n;
+  let n=0,d=new Date();for(;;){const k=localKey(d);if(isNonZeroDay(k)){n++;d.setDate(d.getDate()-1)}else break}return n;
 }
 function statusLabel(s){return s==='complete'?'Completo hecho':s==='minimum'?'Mínimo hecho':s==='skipped'?'Saltado':'Pendiente'}
 
@@ -1321,7 +1359,7 @@ function toggleHabit(id){
   if(!h)return;
   state.habits[id]=!state.habits[id];
   if(state.habits[id]){awardXP(3,'Habito');if(HABIT_TO_MINIMUM[id])getMinimum(HABIT_TO_MINIMUM[id]).status='minimum'}
-  else if(HABIT_TO_MINIMUM[id]&&getMinimum(HABIT_TO_MINIMUM[id]).status==='minimum')getMinimum(HABIT_TO_MINIMUM[id]).status='pending';
+  else{deductXP(3,false);if(HABIT_TO_MINIMUM[id]&&getMinimum(HABIT_TO_MINIMUM[id]).status==='minimum')getMinimum(HABIT_TO_MINIMUM[id]).status='pending'}
   if(HABITS.every(h2=>!!state.habits[h2.id])&&!state.habitXpToday){state.habitXpToday=true;awardXP(25,'Todos los hábitos')}
   saveState();renderHabits();checkAch();render();
 }
@@ -1334,10 +1372,10 @@ function togPS(tid,i){
 function togRehab(exId,i,ex){
   if(!state.legs[exId])state.legs[exId]=[];
   const cur=!!state.legs[exId][i];
-  const done=()=>{state.legs[exId][i]=true;startRest(45);awardXP(2,'Serie rehab',true);getMinimum('rehab').status='minimum';checkRehabDone();saveState();render()};
+  const done=()=>{if(!state.legs[exId])state.legs[exId]=[];state.legs[exId][i]=true;startRest(45);awardXP(2,'Serie rehab',true);getMinimum('rehab').status='minimum';checkRehabDone();saveState();render()};
   if(!cur&&ex.unit==='s')startTimer(typeof ex.reps==='number'?ex.reps:parseInt(ex.reps),ex.name,done);
   else if(!cur)done();
-  else{state.legs[exId][i]=false;deductXP(2,true);if(state.rehabXpToday>0){deductXP(state.rehabXpToday,true);state.rehabXpToday=0;state.rehabDaysTotal=Math.max(0,(state.rehabDaysTotal||0)-1);state.rehabDaysThisWeek=Math.max(0,(state.rehabDaysThisWeek||0)-1)}saveState();render()}
+  else{state.legs[exId][i]=false;deductXP(2,true);if(state.rehabXpToday>0){deductXP(state.rehabXpToday,true);state.rehabXpToday=0;state.rehabDaysTotal=Math.max(0,(state.rehabDaysTotal||0)-1);state.rehabDaysThisWeek=Math.max(0,(state.rehabDaysThisWeek||0)-1);if(getMinimum('rehab').status==='complete')getMinimum('rehab').status='minimum'}saveState();render()}
 }
 function checkRehabDone(){
   const w=RW[state.rehabWeek],exs=w.exercises;
