@@ -720,7 +720,8 @@ function urlBase64ToUint8Array(base64){
 // El Worker comprueba con este token quién eres (antes se fiaba del id que mandaba la app)
 async function tokenWorker(){try{return currentUser?await currentUser.getIdToken():null}catch(e){return null}}
 const zonaHoraria=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||null}catch(e){return null}})();
-function pushWorkerUrl(){return (localStorage.getItem('maxer_worker_url')||'').trim().replace(/\/+$/,'');}
+const WORKER_POR_DEFECTO='https://maxer-ai.jaimemillan103.workers.dev';
+function pushWorkerUrl(){return (localStorage.getItem('maxer_worker_url')||WORKER_POR_DEFECTO).trim().replace(/\/+$/,'');}
 function getPushId(){
   if(currentUser?.uid)return 'u_'+currentUser.uid;
   let id=localStorage.getItem('maxer_push_id');
@@ -1684,7 +1685,7 @@ function rSettings(){
     </div>
     <div class="settings-card"><div class="settings-card-title">✨ Asistente IA</div>
       <div class="settings-help" style="margin-bottom:8px">Pega la URL de tu Cloudflare Worker para activar el chat IA (botón ✨ flotante). Sin URL, el asistente no funciona.</div>
-      <input class="settings-input" style="width:100%;max-width:none" value="${esc(localStorage.getItem('maxer_worker_url')||'')}" placeholder="https://tu-worker.workers.dev" oninput="localStorage.setItem('maxer_worker_url',this.value.trim())">
+      <input class="settings-input" style="width:100%;max-width:none" value="${esc(localStorage.getItem('maxer_worker_url')||'')}" placeholder="${WORKER_POR_DEFECTO}" oninput="localStorage.setItem('maxer_worker_url',this.value.trim())">
     </div>
     <div class="settings-card"><div class="settings-card-title">Cuenta</div>
       <div class="settings-actions"><button class="settings-action" onclick="document.getElementById('logoutModal').classList.remove('hidden')">Cerrar sesión</button></div>
@@ -1889,7 +1890,7 @@ async function sendAIMsg(){
   const text=(inp?.value||'').trim();if(!text)return;
   inp.value='';
   document.getElementById('aiSuggestions').style.display='none';
-  const workerUrl=(localStorage.getItem('maxer_worker_url')||'').trim();
+  const workerUrl=pushWorkerUrl();
   if(!workerUrl){
     aiMessages.push({role:'user',content:text});
     aiMessages.push({role:'assistant',content:'⚠️ Para usar el asistente IA, ve a Ajustes y configura la URL de tu Cloudflare Worker.\n\nSi aún no tienes Worker, consulta las instrucciones incluidas en el zip.'});
